@@ -639,20 +639,6 @@ export const DEFAULT_CATEGORY_MAP: CategoryMap = {
     builtin: true,
     order: 1,
   },
-  Python: {
-    name: 'Python',
-    modules: [
-      'Python基础',
-      'Python数据类型',
-      'Python工程实践',
-      'Python高级特性',
-      'Python算法',
-      'Python爬虫',
-      'Python并发网络',
-    ],
-    builtin: true,
-    order: 2,
-  },
   'AI Agent': {
     name: 'AI Agent',
     modules: [
@@ -666,19 +652,19 @@ export const DEFAULT_CATEGORY_MAP: CategoryMap = {
       'AI应用实践',
     ],
     builtin: true,
-    order: 3,
+    order: 2,
   },
   'Agent 面试核心': {
     name: 'Agent 面试核心',
     modules: ['Agent面试核心'],
     builtin: true,
-    order: 4,
+    order: 3,
   },
   Java: {
     name: 'Java',
     modules: ['Java基础', 'Java并发', 'JVM', 'Spring框架', '计算机网络', 'MySQL', 'Redis'],
     builtin: true,
-    order: 5,
+    order: 4,
   },
 }
 
@@ -696,6 +682,10 @@ export async function getCategoryMap(): Promise<CategoryMap> {
     const builtin = DEFAULT_CATEGORY_MAP[key]
 
     if (entry.builtin && LEGACY_JAVA_CATEGORY_NAMES.has(key)) {
+      continue
+    }
+
+    if (entry.builtin && !builtin) {
       continue
     }
 

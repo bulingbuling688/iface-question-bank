@@ -8,7 +8,7 @@ https://iface-question-bank.chatapi.fun
 
 iFace Question Bank is a browser-based interview practice tool for reviewing technical interview questions, tracking practice progress, and using an AI assistant while preparing answers.
 
-This published version is for personal learning and interview preparation. It includes the original iFace question bank plus an imported Python interview question bank from `derekramm/python-interview-questions`.
+This published version is for personal learning and interview preparation. It includes the original iFace question bank plus focused Agent interview preparation content.
 
 Current capabilities:
 
@@ -20,8 +20,7 @@ Current capabilities:
 
 ## Features
 
-- Built-in question banks for frontend, Java, Golang, AI Agent topics, and Python.
-- Python question modules including basics, advanced features, data types, algorithms, crawlers, concurrency/networking, and engineering.
+- Built-in question banks for frontend, Java, Golang, AI Agent topics, and Agent interview core topics.
 - Local-only progress and settings storage.
 - Import/export workflow for custom question data.
 - Progressive Web App assets and service worker support.

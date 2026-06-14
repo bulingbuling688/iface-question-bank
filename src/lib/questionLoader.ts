@@ -72,18 +72,6 @@ export const BUILTIN_CATEGORIES: readonly BuiltinCategory[] = [
     ],
   },
   {
-    category: 'Python',
-    files: [
-      'python/basics.json',
-      'python/data-types.json',
-      'python/engineering.json',
-      'python/advanced.json',
-      'python/algorithms.json',
-      'python/crawler.json',
-      'python/concurrency-network.json',
-    ],
-  },
-  {
     category: 'AI Agent',
     files: [
       'ai-agent/llm.json',
@@ -116,7 +104,27 @@ export const BUILTIN_CATEGORIES: readonly BuiltinCategory[] = [
 
 /** Flat list of every built-in file path across all categories (for legacy compat). */
 export const BUILTIN_MODULE_FILES: readonly string[] = BUILTIN_CATEGORIES.flatMap((c) => c.files)
-export const BUILTIN_QUESTIONS_VERSION = '0.20.0'
+export const BUILTIN_QUESTIONS_VERSION = '0.21.0'
+
+const REMOVED_BUILTIN_MODULE_FILES = new Set([
+  'python/basics.json',
+  'python/data-types.json',
+  'python/engineering.json',
+  'python/advanced.json',
+  'python/algorithms.json',
+  'python/crawler.json',
+  'python/concurrency-network.json',
+])
+const REMOVED_PYTHON_MODULES = new Set([
+  'Python基础',
+  'Python数据类型',
+  'Python工程实践',
+  'Python高级特性',
+  'Python算法',
+  'Python爬虫',
+  'Python并发网络',
+])
+const REMOVED_BUILTIN_QUESTION_ID_PREFIXES = ['python-']
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -356,6 +364,12 @@ async function cleanupBuiltinReplacementCategories(): Promise<number> {
   for (const [key, entry] of Object.entries(stored)) {
     if (builtinCategories.has(key)) continue
 
+    if (entry.builtin) {
+      removedCategories += 1
+      changed = true
+      continue
+    }
+
     const customModules = entry.modules.filter((module) => !builtinModules.has(module))
     if (customModules.length === 0) {
       removedCategories += 1
@@ -373,6 +387,31 @@ async function cleanupBuiltinReplacementCategories(): Promise<number> {
   }
 
   return removedCategories
+}
+
+async function cleanupRemovedBuiltinQuestions(): Promise<number> {
+  const allQuestions = await getAllQuestions()
+  const removedIds = allQuestions
+    .filter(
+      (question) =>
+        REMOVED_BUILTIN_QUESTION_ID_PREFIXES.some((prefix) => question.id.startsWith(prefix)) &&
+        !question.id.startsWith('custom_') &&
+        (question.source === 'derekramm/python-interview-questions' ||
+          REMOVED_PYTHON_MODULES.has(question.module)),
+    )
+    .map((question) => question.id)
+
+  for (const id of removedIds) {
+    await deleteQuestionById(id)
+  }
+
+  const loadedModules = await getLoadedModules()
+  const nextLoadedModules = loadedModules.filter((file) => !REMOVED_BUILTIN_MODULE_FILES.has(file))
+  if (nextLoadedModules.length !== loadedModules.length) {
+    await setMeta(META_KEYS.LOADED_MODULES, nextLoadedModules)
+  }
+
+  return removedIds.length
 }
 
 export async function migrateBuiltinQuestionReplacements(): Promise<BuiltinReplacementMigrationResult> {
@@ -499,11 +538,15 @@ export async function migrateBuiltinQuestionReplacements(): Promise<BuiltinRepla
 // ─── Load all built-in modules in parallel (faster initial load) ──────────────
 
 export async function loadAllBuiltinModulesParallel(force = false): Promise<LoadResult[]> {
+  const previousVersion = await getMeta<string>(META_KEYS.BUILTIN_QUESTIONS_VERSION)
   const results = await Promise.all(BUILTIN_MODULE_FILES.map((f) => loadModuleFile(f, force)))
   const hasLoadFailure = results.some((result) =>
     result.errors.some((error) => error.index === -1 && result.loaded === 0),
   )
   if (!hasLoadFailure) {
+    if (previousVersion !== BUILTIN_QUESTIONS_VERSION) {
+      await cleanupRemovedBuiltinQuestions()
+    }
     await migrateBuiltinQuestionReplacements()
     const loadedModules = new Set(await getLoadedModules())
     for (const file of BUILTIN_MODULE_FILES) {
