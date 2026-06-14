@@ -1,0 +1,27 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "iface-question-bank-sync",
+  "account_id": "ff87368f7a7eeeeb5d4f2e336d12651b",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-06-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "iface-question-bank.chatapi.fun/api/sync/*",
+      "zone_name": "chatapi.fun"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "iface-question-bank-sync",
+      "database_id": "488e20d4-6fa5-4114-9ea7-34c5fba2b3ff",
+      "migrations_dir": "worker/migrations"
+    }
+  ]
+}

@@ -15,13 +15,14 @@ Current capabilities:
 - Practice built-in interview questions by category, module, difficulty, and status.
 - Review detailed answers with Markdown rendering.
 - Track progress in the browser's local storage.
+- Sync learning progress, notes, starred questions, custom questions, and AI sessions through Cloudflare D1.
 - Import custom JSON question sets.
 - Configure an AI assistant provider in the browser settings.
 
 ## Features
 
 - Built-in Agent interview core question bank.
-- Local-only progress and settings storage.
+- Local IndexedDB storage with optional Cloudflare D1 database sync.
 - Import/export workflow for custom question data.
 - Progressive Web App assets and service worker support.
 - Static Nginx deployment on the VPS.
@@ -31,10 +32,10 @@ Current capabilities:
 | Layer | Technology |
 |---|---|
 | Frontend framework | React 19 + TypeScript |
-| Backend framework | Not used for the VPS static deployment |
-| Database | Browser local storage / IndexedDB |
+| Backend framework | Cloudflare Worker for `/api/sync/*` |
+| Database | Browser IndexedDB + Cloudflare D1 sync snapshots |
 | Build tool | Vite + Bun |
-| Deployment style | Static files served by Nginx on VPS |
+| Deployment style | Static files served by Nginx on VPS, sync API served by Cloudflare Worker |
 
 ## Local Development
 
@@ -82,6 +83,8 @@ The static VPS deployment does not require server-side secrets.
 
 Do not commit real keys. Runtime API keys entered in the app are stored in the user's browser.
 
+Cloudflare D1 sync does not require committed secrets. The browser creates a per-user sync identity, stores the secret locally, and the Worker stores only a SHA-256 hash in D1.
+
 ## Deployment
 
 Project slug:
@@ -111,7 +114,7 @@ VPS path:
 Runtime:
 
 ```text
-Static files served by Nginx
+Static files served by Nginx; `/api/sync/*` served by Cloudflare Worker
 ```
 
 Build command:
@@ -130,6 +133,18 @@ Internal port:
 
 ```text
 Not applicable
+```
+
+Cloudflare Worker:
+
+```text
+iface-question-bank-sync
+```
+
+D1 database:
+
+```text
+iface-question-bank-sync
 ```
 
 Public domain:
@@ -151,6 +166,12 @@ Cloudflare DNS:
 A iface-question-bank -> 34.81.224.158, proxied
 ```
 
+Cloudflare route:
+
+```text
+iface-question-bank.chatapi.fun/api/sync/*
+```
+
 Environment file:
 
 ```text
@@ -165,9 +186,11 @@ Not applicable
 ├── public/questions/    # Built-in question JSON files
 ├── scripts/             # Validation and smoke-check scripts
 ├── src/                 # React application source
+├── worker/              # Cloudflare Worker and D1 migrations
 ├── dist/                # Production build output, generated locally
 ├── package.json         # Scripts and dependencies
 ├── vite.config.ts       # Vite and PWA configuration
+├── wrangler.jsonc       # Cloudflare Worker/D1 configuration
 └── vercel.json          # Upstream Vercel rewrite config
 ```
 
@@ -200,9 +223,17 @@ scp tmp/iface-question-bank-dist.zip new:/tmp/iface-question-bank-dist.zip
 ssh new 'cd /opt/apps/iface-question-bank && unzip -oq /tmp/iface-question-bank-dist.zip -d dist'
 ```
 
+Deploy sync API:
+
+```bash
+bunx wrangler d1 migrations apply iface-question-bank-sync --remote
+bunx wrangler deploy
+```
+
 ## Maintenance Notes
 
-- The VPS deployment is static. The upstream `api/auth.js` Vercel function is not active in this Nginx-only deployment.
+- The VPS deployment is static except for the Cloudflare Worker route `/api/sync/*`.
+- D1 sync stores compact backup snapshots, not the built-in Agent question JSON files.
 - GitHub login and Gist backup require a compatible server-side OAuth callback before they should be considered production-ready on this domain.
 - The app itself remains usable for local question practice without GitHub login.
 - Do not modify the protected production subdomains `api.chatapi.fun`, `cpa.chatapi.fun`, `helper.chatapi.fun`, or `grok.chatapi.fun` for this project.

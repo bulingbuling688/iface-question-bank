@@ -2,6 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invalidateQuestionsCache } from '@/hooks/useQuestions'
 import { buildChatCompletionsBody } from '@/lib/aiClient'
 import {
+  buildD1SyncCode,
+  clearD1SyncProfile,
+  type D1SyncProfile,
+  deleteD1Snapshot,
+  getD1SyncProfile,
+  importD1SyncCode,
+  pullFromD1,
+  pushToD1,
+} from '@/lib/d1Sync'
+import {
   bulkPutJdMatchReports,
   bulkPutMockInterviews,
   bulkPutQuestionAnswerAnnotations,
@@ -102,6 +112,26 @@ function IconGitHub() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
       <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
+  )
+}
+
+function IconDatabase() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+      <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3" />
+      <path d="M3 19c0 1.66 4.03 3 9 3s9-1.34 9-3" />
     </svg>
   )
 }
@@ -630,6 +660,11 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const [syncPushing, setSyncPushing] = useState(false)
   const [syncPulling, setSyncPulling] = useState(false)
   const [syncDeleting, setSyncDeleting] = useState(false)
+  const [dbSyncPushing, setDbSyncPushing] = useState(false)
+  const [dbSyncPulling, setDbSyncPulling] = useState(false)
+  const [dbSyncDeleting, setDbSyncDeleting] = useState(false)
+  const [dbSyncProfile, setDbSyncProfile] = useState<D1SyncProfile | null>(() => getD1SyncProfile())
+  const [dbSyncCodeInput, setDbSyncCodeInput] = useState('')
   const [lastSyncResult, setLastSyncResult] = useState<{
     ok: boolean
     message: string
@@ -646,6 +681,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   useEffect(() => {
     if (open) {
       getCategoryMap().then(setCategoryMap)
+      setDbSyncProfile(getD1SyncProfile())
     }
   }, [open])
 
@@ -1079,6 +1115,121 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
       setConfirmReset(null)
     }
   }, [confirmReset, resetAll, clearAllSessions, showToast])
+
+  const handleDbPush = useCallback(async () => {
+    setDbSyncPushing(true)
+    setLastSyncResult(null)
+    try {
+      const result = await pushToD1(Object.values(sessions))
+      if (result.ok) {
+        setDbSyncProfile(result.profile ?? getD1SyncProfile())
+        if (result.aiSessions?.length) {
+          upsertSessions(result.aiSessions)
+        }
+        if (result.mergedRemoteQuestionCount) {
+          invalidateQuestionsCache()
+        }
+        setLastSyncResult({
+          ok: true,
+          message: `已保存到数据库：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话${formatRemoteMergeSummary(result)}`,
+          at: result.exportedAt,
+        })
+      } else {
+        setLastSyncResult({
+          ok: false,
+          message: `数据库保存失败：${result.error ?? '未知错误'}`,
+        })
+      }
+    } catch (err) {
+      setLastSyncResult({
+        ok: false,
+        message: `数据库保存失败：${err instanceof Error ? err.message : String(err)}`,
+      })
+    } finally {
+      setDbSyncPushing(false)
+    }
+  }, [sessions, upsertSessions])
+
+  const handleDbPull = useCallback(async () => {
+    if (!confirm('确定要从数据库恢复数据吗？会和本地较新的数据合并。')) return
+    setDbSyncPulling(true)
+    setLastSyncResult(null)
+    try {
+      const result = await pullFromD1(Object.values(sessions))
+      if (result === null) {
+        setLastSyncResult({
+          ok: false,
+          message: '数据库里还没有备份，请先执行「保存到数据库」',
+        })
+      } else if (result.ok) {
+        setDbSyncProfile(result.profile ?? getD1SyncProfile())
+        invalidateQuestionsCache()
+        if (result.aiSessions?.length) {
+          upsertSessions(result.aiSessions)
+        }
+        setLastSyncResult({
+          ok: true,
+          message: `已从数据库同步：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话${formatRemoteMergeSummary(result)}`,
+          at: result.exportedAt,
+        })
+      } else {
+        setLastSyncResult({
+          ok: false,
+          message: `数据库恢复失败：${result.error ?? '未知错误'}`,
+        })
+      }
+    } catch (err) {
+      setLastSyncResult({
+        ok: false,
+        message: `数据库恢复失败：${err instanceof Error ? err.message : String(err)}`,
+      })
+    } finally {
+      setDbSyncPulling(false)
+    }
+  }, [sessions, upsertSessions])
+
+  const handleDbDelete = useCallback(async () => {
+    if (!confirm('确定要删除数据库里的当前备份吗？本机数据不受影响。')) return
+    setDbSyncDeleting(true)
+    const result = await deleteD1Snapshot()
+    setDbSyncDeleting(false)
+    setLastSyncResult({
+      ok: result.ok,
+      message: result.ok ? '数据库备份已删除' : `数据库备份删除失败：${result.error ?? '未知错误'}`,
+    })
+  }, [])
+
+  const handleDbCodeImport = useCallback(() => {
+    try {
+      const profile = importD1SyncCode(dbSyncCodeInput)
+      setDbSyncProfile(profile)
+      setDbSyncCodeInput('')
+      setLastSyncResult({ ok: true, message: '同步码已导入，可以从数据库恢复数据了' })
+    } catch (err) {
+      setLastSyncResult({
+        ok: false,
+        message: `同步码导入失败：${err instanceof Error ? err.message : String(err)}`,
+      })
+    }
+  }, [dbSyncCodeInput])
+
+  const handleDbCodeCopy = useCallback(async () => {
+    const code = buildD1SyncCode(dbSyncProfile)
+    if (!code) return
+    try {
+      await navigator.clipboard.writeText(code)
+      showToast('同步码已复制')
+    } catch {
+      showToast('复制失败，请手动复制同步码', 'error')
+    }
+  }, [dbSyncProfile, showToast])
+
+  const handleDbProfileForget = useCallback(() => {
+    if (!confirm('确定要忘记本机保存的数据库同步身份吗？数据库里的备份不会删除。')) return
+    clearD1SyncProfile()
+    setDbSyncProfile(null)
+    setLastSyncResult({ ok: true, message: '本机同步身份已清除' })
+  }, [])
 
   // ─── Determine AI provider/model selection ────────────────────────────────
 
@@ -2197,6 +2348,312 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                 title="云同步"
               />
 
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 18 }}>
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: 12,
+                    background: 'var(--surface-2)',
+                    border: '1px solid var(--border-subtle)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <IconDatabase />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        数据库同步
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                        保存到 Cloudflare D1，当前站点同域接口
+                      </p>
+                    </div>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        padding: '3px 8px',
+                        borderRadius: 99,
+                        background: dbSyncProfile ? 'var(--success-light)' : 'var(--surface-3)',
+                        color: dbSyncProfile ? 'var(--success)' : 'var(--text-3)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {dbSyncProfile ? '已绑定' : '未绑定'}
+                    </span>
+                  </div>
+
+                  {dbSyncProfile && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                        同步身份：{dbSyncProfile.profileId.slice(0, 8)}…
+                      </p>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          className="input-base"
+                          value={buildD1SyncCode(dbSyncProfile)}
+                          readOnly
+                          spellCheck={false}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            fontSize: 11,
+                            fontFamily: 'var(--font-mono)',
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleDbCodeCopy}
+                          style={{
+                            flexShrink: 0,
+                            padding: '0 12px',
+                            borderRadius: 8,
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            color: 'var(--text-2)',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          复制
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.5 }}>
+                        同步码可在其他设备导入，请不要公开分享。
+                      </p>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={handleDbPush}
+                      disabled={dbSyncPushing || dbSyncPulling}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        padding: '9px 10px',
+                        borderRadius: 9,
+                        border: '1px solid rgba(var(--primary-rgb),0.25)',
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: dbSyncPushing || dbSyncPulling ? 'default' : 'pointer',
+                        opacity: dbSyncPushing || dbSyncPulling ? 0.65 : 1,
+                      }}
+                    >
+                      {dbSyncPushing ? (
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          style={{ animation: 'spin 1s linear infinite' }}
+                        >
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <IconUpload />
+                      )}
+                      {dbSyncPushing ? '保存中…' : '保存到数据库'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDbPull}
+                      disabled={dbSyncPushing || dbSyncPulling || !dbSyncProfile}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 7,
+                        padding: '9px 10px',
+                        borderRadius: 9,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-2)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor:
+                          dbSyncPushing || dbSyncPulling || !dbSyncProfile ? 'default' : 'pointer',
+                        opacity: dbSyncPushing || dbSyncPulling || !dbSyncProfile ? 0.55 : 1,
+                      }}
+                    >
+                      {dbSyncPulling ? (
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          style={{ animation: 'spin 1s linear infinite' }}
+                        >
+                          <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                        </svg>
+                      ) : (
+                        <IconDownload />
+                      )}
+                      {dbSyncPulling ? '恢复中…' : '从数据库恢复'}
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      className="input-base"
+                      value={dbSyncCodeInput}
+                      onChange={(e) => setDbSyncCodeInput(e.target.value)}
+                      placeholder="粘贴数据库同步码"
+                      spellCheck={false}
+                      style={{ flex: 1, minWidth: 0, fontSize: 12 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleDbCodeImport}
+                      disabled={!dbSyncCodeInput.trim()}
+                      style={{
+                        flexShrink: 0,
+                        padding: '0 12px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-2)',
+                        fontSize: 12,
+                        cursor: dbSyncCodeInput.trim() ? 'pointer' : 'default',
+                        opacity: dbSyncCodeInput.trim() ? 1 : 0.55,
+                      }}
+                    >
+                      导入
+                    </button>
+                  </div>
+
+                  {dbSyncProfile && (
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={handleDbDelete}
+                        disabled={dbSyncDeleting}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(239,68,68,0.25)',
+                          background: 'transparent',
+                          color: 'var(--danger)',
+                          fontSize: 12,
+                          cursor: dbSyncDeleting ? 'default' : 'pointer',
+                          opacity: dbSyncDeleting ? 0.6 : 1,
+                        }}
+                      >
+                        <IconTrash />
+                        {dbSyncDeleting ? '删除中…' : '删除数据库备份'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDbProfileForget}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'transparent',
+                          color: 'var(--text-3)',
+                          fontSize: 12,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        忘记本机身份
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {lastSyncResult && (
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    background: lastSyncResult.ok
+                      ? 'var(--success-light, rgba(16,185,129,0.08))'
+                      : 'var(--danger-light, rgba(239,68,68,0.08))',
+                    border: `1px solid ${lastSyncResult.ok ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: 8,
+                    marginBottom: 16,
+                  }}
+                >
+                  <span style={{ fontSize: 14, flexShrink: 0 }}>
+                    {lastSyncResult.ok ? '✅' : '❌'}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p
+                      style={{
+                        fontSize: 12,
+                        color: lastSyncResult.ok ? 'var(--success)' : 'var(--danger)',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {lastSyncResult.message}
+                    </p>
+                    {lastSyncResult.at && (
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                        备份时间：{new Date(lastSyncResult.at).toLocaleString('zh-CN')}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLastSyncResult(null)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-3)',
+                      padding: 0,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+
               {/* Not logged in */}
               {!isLoggedIn && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -2371,68 +2828,6 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                       退出
                     </button>
                   </div>
-
-                  {/* Last sync result banner */}
-                  {lastSyncResult && (
-                    <div
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 10,
-                        background: lastSyncResult.ok
-                          ? 'var(--success-light, rgba(16,185,129,0.08))'
-                          : 'var(--danger-light, rgba(239,68,68,0.08))',
-                        border: `1px solid ${lastSyncResult.ok ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`,
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                      }}
-                    >
-                      <span style={{ fontSize: 14, flexShrink: 0 }}>
-                        {lastSyncResult.ok ? '✅' : '❌'}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontSize: 12,
-                            color: lastSyncResult.ok ? 'var(--success)' : 'var(--danger)',
-                            lineHeight: 1.5,
-                          }}
-                        >
-                          {lastSyncResult.message}
-                        </p>
-                        {lastSyncResult.at && (
-                          <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                            备份时间：{new Date(lastSyncResult.at).toLocaleString('zh-CN')}
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setLastSyncResult(null)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--text-3)',
-                          padding: 0,
-                          flexShrink: 0,
-                        }}
-                      >
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                        >
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
 
                   {/* Sync actions */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
