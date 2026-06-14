@@ -1,81 +1,15 @@
 // Built-in modules across all built-in categories (used for icon/color mapping & default filter UI)
 export const BUILTIN_MODULES = [
-  // 前端
-  'JS基础',
-  'React',
-  'Vue',
-  '性能优化',
-  '网络',
-  'CSS',
-  'TypeScript',
-  '手写题',
-  '项目深挖',
-  // Golang
-  'Go基础',
-  '并发编程',
-  '内存与GC',
-  '工程化',
-  'Web开发',
-  // AI Agent
-  'LLM基础',
-  'Prompt工程',
-  'Agent架构',
-  'RAG与知识库',
-  '工具调用与工作流',
-  '评测与线上优化',
-  'AI工程化',
-  'AI应用实践',
   // Agent 面试核心
   'Agent面试核心',
-  // Java
-  'Java基础',
-  'Java并发',
-  'JVM',
-  'Spring框架',
-  '计算机网络',
-  'MySQL',
-  'Redis',
 ] as const
 
 export type BuiltinModule = (typeof BUILTIN_MODULES)[number]
 
 /** Maps each built-in module to its display category label */
 export const BUILTIN_MODULE_CATEGORY: Record<string, string> = {
-  // 前端
-  JS基础: '前端',
-  React: '前端',
-  Vue: '前端',
-  性能优化: '前端',
-  网络: '前端',
-  CSS: '前端',
-  TypeScript: '前端',
-  手写题: '前端',
-  项目深挖: '前端',
-  // Golang
-  Go基础: 'Go',
-  并发编程: 'Go',
-  内存与GC: 'Go',
-  工程化: 'Go',
-  Web开发: 'Go',
-  // AI Agent
-  LLM基础: 'AI Agent',
-  Prompt工程: 'AI Agent',
-  Agent架构: 'AI Agent',
-  RAG与知识库: 'AI Agent',
-  工具调用与工作流: 'AI Agent',
-  评测与线上优化: 'AI Agent',
-  AI工程化: 'AI Agent',
-  AI应用实践: 'AI Agent',
   // Agent 面试核心
   Agent面试核心: 'Agent 面试核心',
-  // Java
-  Java基础: 'Java',
-  Java并发: 'Java',
-  JVM: 'Java',
-  Spring框架: 'Java',
-  计算机网络: 'Java',
-  MySQL: 'Java',
-  Redis: 'Java',
 }
 
 // Module is now open — any string is valid, enabling custom topics like Golang, Java, etc.

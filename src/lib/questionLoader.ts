@@ -47,84 +47,17 @@ export interface BuiltinCategory {
 
 export const BUILTIN_CATEGORIES: readonly BuiltinCategory[] = [
   {
-    category: '前端',
-    files: [
-      'frontend/js.json',
-      'frontend/react.json',
-      'frontend/vue.json',
-      'frontend/css.json',
-      'frontend/typescript.json',
-      'frontend/network.json',
-      'frontend/performance.json',
-      'frontend/algorithm.json',
-      'frontend/project.json',
-    ],
-  },
-  // ── Add new built-in categories below ──────────────────────────────────
-  {
-    category: 'Golang',
-    files: [
-      'golang/basics.json',
-      'golang/concurrency.json',
-      'golang/memory.json',
-      'golang/engineering.json',
-      'golang/web.json',
-    ],
-  },
-  {
-    category: 'AI Agent',
-    files: [
-      'ai-agent/llm.json',
-      'ai-agent/prompt.json',
-      'ai-agent/agent.json',
-      'ai-agent/rag.json',
-      'ai-agent/tools.json',
-      'ai-agent/evaluation.json',
-      'ai-agent/engineering.json',
-      'ai-agent/application.json',
-    ],
-  },
-  {
     category: 'Agent 面试核心',
     files: ['agent-interview-core/core.json'],
-  },
-  {
-    category: 'Java',
-    files: [
-      'java/basics.json',
-      'java/concurrency.json',
-      'java/jvm.json',
-      'java/spring.json',
-      'java/network.json',
-      'java/mysql.json',
-      'java/redis.json',
-    ],
   },
 ] as const
 
 /** Flat list of every built-in file path across all categories (for legacy compat). */
 export const BUILTIN_MODULE_FILES: readonly string[] = BUILTIN_CATEGORIES.flatMap((c) => c.files)
-export const BUILTIN_QUESTIONS_VERSION = '0.21.0'
+export const BUILTIN_QUESTIONS_VERSION = '0.22.0'
 
-const REMOVED_BUILTIN_MODULE_FILES = new Set([
-  'python/basics.json',
-  'python/data-types.json',
-  'python/engineering.json',
-  'python/advanced.json',
-  'python/algorithms.json',
-  'python/crawler.json',
-  'python/concurrency-network.json',
-])
-const REMOVED_PYTHON_MODULES = new Set([
-  'Python基础',
-  'Python数据类型',
-  'Python工程实践',
-  'Python高级特性',
-  'Python算法',
-  'Python爬虫',
-  'Python并发网络',
-])
-const REMOVED_BUILTIN_QUESTION_ID_PREFIXES = ['python-']
+const ACTIVE_BUILTIN_MODULE_FILES = new Set(BUILTIN_MODULE_FILES)
+const ACTIVE_BUILTIN_MODULES = new Set(['Agent面试核心'])
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -394,10 +327,7 @@ async function cleanupRemovedBuiltinQuestions(): Promise<number> {
   const removedIds = allQuestions
     .filter(
       (question) =>
-        REMOVED_BUILTIN_QUESTION_ID_PREFIXES.some((prefix) => question.id.startsWith(prefix)) &&
-        !question.id.startsWith('custom_') &&
-        (question.source === 'derekramm/python-interview-questions' ||
-          REMOVED_PYTHON_MODULES.has(question.module)),
+        !question.id.startsWith('custom_') && !ACTIVE_BUILTIN_MODULES.has(question.module),
     )
     .map((question) => question.id)
 
@@ -406,7 +336,7 @@ async function cleanupRemovedBuiltinQuestions(): Promise<number> {
   }
 
   const loadedModules = await getLoadedModules()
-  const nextLoadedModules = loadedModules.filter((file) => !REMOVED_BUILTIN_MODULE_FILES.has(file))
+  const nextLoadedModules = loadedModules.filter((file) => ACTIVE_BUILTIN_MODULE_FILES.has(file))
   if (nextLoadedModules.length !== loadedModules.length) {
     await setMeta(META_KEYS.LOADED_MODULES, nextLoadedModules)
   }

@@ -617,54 +617,11 @@ export const META_KEYS = {
 // ─── Default built-in category map ───────────────────────────────────────────
 
 export const DEFAULT_CATEGORY_MAP: CategoryMap = {
-  前端: {
-    name: '前端',
-    modules: [
-      'JS基础',
-      'React',
-      'Vue',
-      'CSS',
-      'TypeScript',
-      '性能优化',
-      '网络',
-      '手写题',
-      '项目深挖',
-    ],
-    builtin: true,
-    order: 0,
-  },
-  Golang: {
-    name: 'Golang',
-    modules: ['Go基础', '并发编程', '内存与GC', '工程化', 'Web开发'],
-    builtin: true,
-    order: 1,
-  },
-  'AI Agent': {
-    name: 'AI Agent',
-    modules: [
-      'LLM基础',
-      'Prompt工程',
-      'Agent架构',
-      'RAG与知识库',
-      '工具调用与工作流',
-      '评测与线上优化',
-      'AI工程化',
-      'AI应用实践',
-    ],
-    builtin: true,
-    order: 2,
-  },
   'Agent 面试核心': {
     name: 'Agent 面试核心',
     modules: ['Agent面试核心'],
     builtin: true,
-    order: 3,
-  },
-  Java: {
-    name: 'Java',
-    modules: ['Java基础', 'Java并发', 'JVM', 'Spring框架', '计算机网络', 'MySQL', 'Redis'],
-    builtin: true,
-    order: 4,
+    order: 0,
   },
 }
 
