@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-05-13T04:47:29.892Z",
+  "packageVersion": "1.3.0",
+  "targets": {
+    "ai": false,
+    "gist": true
+  },
+  "ok": true,
+  "evidence": [
+    {
+      "check": "gist.read",
+      "details": {
+        "backupVersion": 6,
+        "noteCount": 1,
+        "starredCount": 1,
+        "aiSessionCount": 1,
+        "customQuestionCount": 1
+      }
+    },
+    {
+      "check": "gist.update",
+      "details": {
+        "backupVersion": 6,
+        "customSourceCount": 2,
+        "temporaryGistDeleted": false
+      }
+    },
+    {
+      "check": "gist.cleanup",
+      "details": {
+        "temporaryGistDeleted": true
+      }
+    }
+  ],
+  "failures": []
+}

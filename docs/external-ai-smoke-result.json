@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-05-13T04:47:29.259Z",
+  "packageVersion": "1.3.0",
+  "targets": {
+    "ai": true,
+    "gist": false
+  },
+  "ok": true,
+  "evidence": [
+    {
+      "check": "ai.chat",
+      "details": {
+        "model": "deepseek-v4-flash",
+        "baseUrlHost": "api.deepseek.com",
+        "responseChars": 5,
+        "streamedChars": 5
+      }
+    },
+    {
+      "check": "ai.feedback",
+      "details": {
+        "model": "deepseek-v4-flash",
+        "baseUrlHost": "api.deepseek.com",
+        "feedbackChars": 279,
+        "streamedChars": 279,
+        "noteChars": 404
+      }
+    }
+  ],
+  "failures": []
+}
