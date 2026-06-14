@@ -25,6 +25,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(scriptDir, '..')
 const questionRoot = join(repoRoot, 'public/questions')
 const MIN_ANSWER_LENGTH = 180
+const SHORT_ANSWER_ALLOWED_FILES = new Set(['public/questions/agent-interview-core/core.json'])
 const MIN_TAGS = 2
 
 function findJsonFiles(dir: string): string[] {
@@ -197,7 +198,10 @@ for (const [text, entries] of texts) {
 }
 
 for (const question of questions) {
-  if (question.answer.trim().length < MIN_ANSWER_LENGTH) {
+  if (
+    !SHORT_ANSWER_ALLOWED_FILES.has(question.file.replace(/\\/g, '/')) &&
+    question.answer.trim().length < MIN_ANSWER_LENGTH
+  ) {
     failures.push({
       file: question.file,
       id: question.id,

@@ -54,7 +54,7 @@ export const BUILTIN_CATEGORIES: readonly BuiltinCategory[] = [
 
 /** Flat list of every built-in file path across all categories (for legacy compat). */
 export const BUILTIN_MODULE_FILES: readonly string[] = BUILTIN_CATEGORIES.flatMap((c) => c.files)
-export const BUILTIN_QUESTIONS_VERSION = '0.22.0'
+export const BUILTIN_QUESTIONS_VERSION = '0.23.0'
 
 const ACTIVE_BUILTIN_MODULE_FILES = new Set(BUILTIN_MODULE_FILES)
 const ACTIVE_BUILTIN_MODULES = new Set(['Agent面试核心'])
