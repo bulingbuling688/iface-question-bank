@@ -1,7 +1,7 @@
 [
   {
     "id": "python-interview-core-001",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "Python 常见的数据类型有哪些？",
     "answer": "Python 常见基础类型有 int、float、str、bool，常见容器类型有 list、tuple、dict、set。实际项目里，字符串常用于文本和路径，列表保存一批数据，字典描述对象信息，集合用于去重和成员判断。",
@@ -13,7 +13,7 @@
   },
   {
     "id": "python-interview-core-002",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "列表 list 和元组 tuple 有什么区别？",
     "answer": "列表 list 是可变的，创建后可以增删改；元组 tuple 是不可变的，创建后不能修改。两者都能保存有序数据并支持下标访问。后续会变化的数据适合用列表，固定结构的数据适合用元组。",
@@ -25,7 +25,7 @@
   },
   {
     "id": "python-interview-core-003",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "哪些是可变类型，哪些是不可变类型？",
     "answer": "不可变类型常见有 int、float、str、tuple、bool；可变类型常见有 list、dict、set。可变对象可以在原对象上修改内容，不可变对象修改时通常会生成新对象。这个区别会影响函数传参、拷贝和字典 key 的使用。",
@@ -37,7 +37,7 @@
   },
   {
     "id": "python-interview-core-004",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "怎么修改元组？",
     "answer": "元组本身不可变，所以不能直接修改元组中的元素。如果确实要变，一般是转成列表修改后再转回元组。需要注意，如果元组里包含列表这类可变对象，虽然元组的引用不能换，但里面的列表内容仍然可以被修改。",
@@ -49,7 +49,7 @@
   },
   {
     "id": "python-interview-core-005",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "浅拷贝和深拷贝有什么区别？",
     "answer": "浅拷贝只复制最外层对象，内部嵌套对象仍然共用同一份引用。深拷贝会把嵌套对象也递归复制出来。Python 中 copy.copy 是浅拷贝，copy.deepcopy 是深拷贝。",
@@ -61,7 +61,7 @@
   },
   {
     "id": "python-interview-core-006",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "字典 dict 的底层结构是什么？",
     "answer": "Python 字典底层主要基于哈希表实现，通过 key 的哈希值定位存储位置。它的优势是按 key 查询、插入和删除通常很快。理解字典时可以抓住两个点：key 要能哈希，冲突时需要处理哈希碰撞。",
@@ -73,7 +73,7 @@
   },
   {
     "id": "python-interview-core-007",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "为什么字典的 key 不能是列表？",
     "answer": "字典的 key 必须是可哈希对象，而列表是可变对象，不可哈希。因为列表内容可以变化，如果作为 key，哈希值和定位位置就可能不稳定。通常可以用字符串、数字、元组这类不可变对象作为 key。",
@@ -85,7 +85,7 @@
   },
   {
     "id": "python-interview-core-008",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "哈希碰撞是什么意思？",
     "answer": "哈希碰撞是指不同的 key 经过哈希计算后落到了相同或冲突的位置。哈希表需要通过开放寻址或链式结构等方式处理冲突。对字典使用者来说，只要 key 的 hash 和相等比较定义正确，字典会负责处理碰撞。",
@@ -97,7 +97,7 @@
   },
   {
     "id": "python-interview-core-009",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "字典里有重复 key 会怎么处理？",
     "answer": "字典中 key 是唯一的，如果重复赋值同一个 key，后面的 value 会覆盖前面的 value。也就是说，字典不会保留多个相同 key 的记录。需要保存多个值时，可以让 value 变成列表或其他容器。",
@@ -109,7 +109,7 @@
   },
   {
     "id": "python-interview-core-010",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 2,
     "question": "字典什么时候会扩容？",
     "answer": "字典随着元素增加，哈希表装载因子变高时会触发扩容。扩容会申请更大的空间，并重新安排元素位置，以减少哈希冲突、保持查询效率。平时使用不需要手动扩容，但要知道大量插入时可能有重新分配成本。",
@@ -121,7 +121,7 @@
   },
   {
     "id": "python-interview-core-011",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "列表怎么去重？",
     "answer": "最简单的方法是 list(set(lst))，但这种方式不保证原顺序。如果要保留顺序，可以用 dict.fromkeys(lst) 再转列表。实际选择哪种方式，要看是否需要保留顺序以及元素是否可哈希。",
@@ -133,7 +133,7 @@
   },
   {
     "id": "python-interview-core-012",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "列表和集合有什么区别？",
     "answer": "列表是有序的，可以重复，支持下标访问；集合是无序的，不允许重复，主要用于去重和成员判断。列表适合保存一批有顺序的数据，集合适合判断某个元素是否存在或做交并差运算。",
@@ -145,7 +145,7 @@
   },
   {
     "id": "python-interview-core-013",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "字符串怎么反转？",
     "answer": "Python 中常用切片 s[::-1] 反转字符串。这个写法表示从后往前按步长 -1 取字符。它简单直观，适合面试和日常处理短字符串。",
@@ -157,7 +157,7 @@
   },
   {
     "id": "python-interview-core-014",
-    "module": "Python数据类型",
+    "module": "Python",
     "difficulty": 1,
     "question": "如何判断变量类型？",
     "answer": "常用 isinstance(obj, type) 判断对象是否属于某个类型。相比直接用 type(obj) == type，isinstance 还能兼容继承关系。比如判断一个变量是否是列表，可以写 isinstance(x, list)。",
@@ -169,7 +169,7 @@
   },
   {
     "id": "python-interview-core-015",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是装饰器？",
     "answer": "装饰器本质上是一个函数，用来在不修改原函数代码的情况下给函数增加额外功能。它通常接收一个函数，返回一个包装函数。常见用途有日志记录、权限校验、耗时统计、缓存和测试标记。",
@@ -181,7 +181,7 @@
   },
   {
     "id": "python-interview-core-016",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "@decorator 写法本质上等价于什么？",
     "answer": "@decorator 是语法糖，本质上等价于 func = decorator(func)。也就是说，原函数会被传入装饰器，装饰器返回的新函数再绑定回原函数名。理解这一点，就能看懂多个装饰器和 pytest 中 @ 标记的基本思想。",
@@ -193,7 +193,7 @@
   },
   {
     "id": "python-interview-core-017",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "*args 和 **kwargs 是什么？",
     "answer": "*args 用来接收不定数量的位置参数，结果通常是一个元组。**kwargs 用来接收不定数量的关键字参数，结果通常是一个字典。它们常用于封装通用函数、装饰器和透传参数。",
@@ -205,7 +205,7 @@
   },
   {
     "id": "python-interview-core-018",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 1,
     "question": "lambda 函数是什么？",
     "answer": "lambda 是匿名函数，用来定义简单的一行函数。它适合在排序、map、filter 这类场景里临时传入一个小函数。复杂逻辑不建议用 lambda，直接用 def 定义函数更清楚。",
@@ -217,7 +217,7 @@
   },
   {
     "id": "python-interview-core-019",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "map、filter 和 reduce 分别有什么作用？",
     "answer": "map 是把函数作用到每个元素上，filter 是按条件过滤元素，reduce 是把一批元素累积计算成一个结果。Python3 中 map 和 filter 返回迭代器，reduce 需要从 functools 导入。日常代码里，简单场景也常用列表推导式替代。",
@@ -229,7 +229,7 @@
   },
   {
     "id": "python-interview-core-020",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是闭包？",
     "answer": "闭包是指内部函数引用了外部函数的变量，并且外部函数执行结束后，这些变量仍然能被内部函数使用。闭包常用于保存状态、实现装饰器或函数工厂。理解闭包要抓住三个点：嵌套函数、引用外部变量、返回内部函数。",
@@ -241,7 +241,7 @@
   },
   {
     "id": "python-interview-core-021",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是高阶函数？",
     "answer": "高阶函数是指可以接收函数作为参数，或者把函数作为返回值的函数。Python 中函数是一等对象，所以可以像普通变量一样传递。装饰器、map、filter 都体现了高阶函数的思想。",
@@ -253,7 +253,7 @@
   },
   {
     "id": "python-interview-core-022",
-    "module": "Python函数与装饰器",
+    "module": "Python",
     "difficulty": 2,
     "question": "函数默认参数有什么坑？",
     "answer": "默认参数只会在函数定义时初始化一次，所以不要把列表、字典这类可变对象直接作为默认值。否则多次调用可能共用同一个对象，导致数据串在一起。常见写法是默认用 None，在函数内部再创建新对象。",
@@ -265,7 +265,7 @@
   },
   {
     "id": "python-interview-core-023",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是迭代器？",
     "answer": "迭代器是可以逐个取出元素的对象，需要实现 __iter__ 和 __next__ 方法。__iter__ 返回迭代器本身，__next__ 返回下一个元素，取完时抛出 StopIteration。for 循环内部就是基于迭代协议工作的。",
@@ -277,7 +277,7 @@
   },
   {
     "id": "python-interview-core-024",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是生成器？",
     "answer": "生成器是一种特殊的迭代器，通常由包含 yield 的函数创建。它不会一次性生成所有数据，而是需要时才产出下一个值。适合处理大文件、流式数据或不想一次性占用太多内存的场景。",
@@ -289,7 +289,7 @@
   },
   {
     "id": "python-interview-core-025",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "迭代器和生成器有什么关系？",
     "answer": "生成器是一种更方便创建的迭代器。普通迭代器通常要自己实现 __iter__ 和 __next__，生成器只需要在函数里使用 yield。两者都可以被 for 循环遍历，也都是按需取值。",
@@ -301,7 +301,7 @@
   },
   {
     "id": "python-interview-core-026",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "__iter__ 和 __next__ 分别有什么作用？",
     "answer": "__iter__ 用来返回一个迭代器对象，__next__ 用来返回下一个元素。当没有元素可取时，__next__ 应该抛出 StopIteration。一个对象如果想被 for 循环逐个遍历，通常就要符合这个迭代协议。",
@@ -313,7 +313,7 @@
   },
   {
     "id": "python-interview-core-027",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "如何让一个类或对象可以被迭代？",
     "answer": "可以让类实现 __iter__ 方法，返回一个迭代器；如果对象本身就是迭代器，还需要实现 __next__。更简单的方式是在 __iter__ 里使用 yield。这样这个对象就可以放进 for 循环里逐个遍历。",
@@ -325,7 +325,7 @@
   },
   {
     "id": "python-interview-core-028",
-    "module": "Python迭代器与生成器",
+    "module": "Python",
     "difficulty": 2,
     "question": "return 和 yield 有什么区别？",
     "answer": "return 会结束函数并返回结果，函数状态随之结束。yield 会暂停函数，把一个值产出给外部，下次继续从暂停位置往下执行。包含 yield 的函数调用后返回的是生成器对象。",
@@ -337,7 +337,7 @@
   },
   {
     "id": "python-interview-core-029",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 1,
     "question": "面向对象的三大特性是什么？",
     "answer": "面向对象三大特性是封装、继承、多态。封装是把数据和行为组织到对象内部，继承是复用父类能力，多态是不同对象对同一方法表现出不同实现。Python 中类、对象、方法、继承都围绕这些思想展开。",
@@ -349,7 +349,7 @@
   },
   {
     "id": "python-interview-core-030",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "__init__ 和 __new__ 有什么区别？",
     "answer": "__new__ 负责创建对象，返回一个实例；__init__ 负责初始化对象，给实例设置属性。通常业务代码主要写 __init__，只有在单例、不可变对象定制等特殊场景才会明显用到 __new__。",
@@ -361,7 +361,7 @@
   },
   {
     "id": "python-interview-core-031",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 1,
     "question": "self 是什么？",
     "answer": "self 表示当前实例对象本身。实例方法的第一个参数通常写 self，用来访问当前对象的属性和方法。它不是关键字，只是 Python 社区约定俗成的命名。",
@@ -373,7 +373,7 @@
   },
   {
     "id": "python-interview-core-032",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "类方法和静态方法有什么区别？",
     "answer": "类方法用 @classmethod 定义，第一个参数通常是 cls，能访问类本身。静态方法用 @staticmethod 定义，不自动接收 self 或 cls，更像放在类命名空间里的普通函数。需要操作类状态时用类方法，只是工具函数时可以用静态方法。",
@@ -385,7 +385,7 @@
   },
   {
     "id": "python-interview-core-033",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 1,
     "question": "Python 私有属性怎么写？",
     "answer": "Python 中通常用单下划线表示内部使用约定，用双下划线触发名称改写，弱化外部直接访问。比如 __name 会被改写成类似 _ClassName__name。Python 的私有更多是约定和防误用，不是绝对访问控制。",
@@ -397,7 +397,7 @@
   },
   {
     "id": "python-interview-core-034",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是多态？",
     "answer": "多态是指不同对象调用同名方法时，可以表现出不同的行为。Python 更强调鸭子类型，只要对象提供了需要的方法，就可以被当成对应能力来使用。比如不同支付类都实现 pay 方法，调用方可以统一调用 pay。",
@@ -409,7 +409,7 @@
   },
   {
     "id": "python-interview-core-035",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "super() 有什么作用？",
     "answer": "super() 用来调用父类或继承链上的方法，常见于子类扩展父类初始化逻辑。它不是简单地固定调用某个父类，而是遵循 MRO 方法解析顺序。多继承场景下，super() 能让继承链调用更规范。",
@@ -421,7 +421,7 @@
   },
   {
     "id": "python-interview-core-036",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "property 有什么作用？",
     "answer": "@property 可以把方法伪装成属性来访问。它常用于对外提供简洁的属性读取方式，同时在内部保留计算、校验或兼容逻辑。比如 user.age 看起来像属性，但背后可以由方法动态计算。",
@@ -433,7 +433,7 @@
   },
   {
     "id": "python-interview-core-037",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "__slots__ 是什么？",
     "answer": "__slots__ 用来限制实例可以拥有的属性，并减少每个实例默认 __dict__ 带来的内存开销。它适合大量创建同类对象、属性集合固定的场景。不适合需要动态添加属性的对象。",
@@ -445,7 +445,7 @@
   },
   {
     "id": "python-interview-core-038",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "Python 多继承中的 MRO 是什么？",
     "answer": "MRO 是方法解析顺序，决定多继承时查找方法的路径。Python 使用 C3 线性化算法生成稳定的继承顺序。可以通过 类名.__mro__ 或 类名.mro() 查看。",
@@ -457,7 +457,7 @@
   },
   {
     "id": "python-interview-core-039",
-    "module": "Python面向对象",
+    "module": "Python",
     "difficulty": 2,
     "question": "介绍一些 Python 魔法函数",
     "answer": "魔法函数是前后双下划线的方法，用来接入 Python 的内置协议。常见有 __init__ 初始化对象，__str__ 控制打印展示，__len__ 支持 len，__iter__ 和 __next__ 支持迭代，__enter__ 和 __exit__ 支持 with。它们让自定义类能像内置对象一样工作。",
@@ -469,7 +469,7 @@
   },
   {
     "id": "python-interview-core-040",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 1,
     "question": "异常处理的关键字有哪些？",
     "answer": "常见异常处理关键字有 try、except、else、finally 和 raise。try 放可能出错的代码，except 处理异常，else 在没有异常时执行，finally 不管是否异常都会执行。raise 用来主动抛出异常。",
@@ -481,7 +481,7 @@
   },
   {
     "id": "python-interview-core-041",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 1,
     "question": "raise 有什么作用？",
     "answer": "raise 用来主动抛出异常。它常用于参数不合法、状态不符合预期、业务规则不满足时，让调用方知道这里出问题了。相比静默返回 None，主动抛异常更容易暴露错误。",
@@ -493,7 +493,7 @@
   },
   {
     "id": "python-interview-core-042",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 1,
     "question": "import 和 from ... import ... 有什么区别？",
     "answer": "import module 是导入整个模块，使用时通常写 module.name。from module import name 是从模块里导入某个具体对象，使用时可以直接写 name。前者命名更清楚，后者写法更简短。",
@@ -505,7 +505,7 @@
   },
   {
     "id": "python-interview-core-043",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 1,
     "question": "__name__ == '__main__' 有什么作用？",
     "answer": "它用来判断当前文件是被直接运行，还是被其他文件导入。只有直接运行当前文件时，这个判断才成立。常用于把测试代码、启动入口放在 main 保护里，避免导入模块时自动执行。",
@@ -517,7 +517,7 @@
   },
   {
     "id": "python-interview-core-044",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 2,
     "question": "如何捕获所有普通异常？",
     "answer": "一般可以写 except Exception 捕获大多数普通异常。它不会捕获 SystemExit、KeyboardInterrupt 这类继承自 BaseException 的特殊异常。实际项目里不建议无脑吞掉所有异常，至少要记录日志或重新抛出。",
@@ -529,7 +529,7 @@
   },
   {
     "id": "python-interview-core-045",
-    "module": "Python异常与模块",
+    "module": "Python",
     "difficulty": 2,
     "question": "with 语句是如何工作的？",
     "answer": "with 语句基于上下文管理器协议工作，会调用对象的 __enter__ 和 __exit__ 方法。进入代码块时执行 __enter__，退出时执行 __exit__，即使中间出错也能做清理。常见场景是 with open 自动关闭文件。",
@@ -541,7 +541,7 @@
   },
   {
     "id": "python-interview-core-046",
-    "module": "Python并发与性能",
+    "module": "Python",
     "difficulty": 2,
     "question": "什么是 GIL 全局解释器锁？",
     "answer": "GIL 是 CPython 解释器中的全局解释器锁，它使同一时刻只有一个线程执行 Python 字节码。它简化了内存管理，但限制了多线程在 CPU 密集任务上的并行能力。I/O 密集任务仍然可以通过多线程提升效率。",
@@ -553,7 +553,7 @@
   },
   {
     "id": "python-interview-core-047",
-    "module": "Python并发与性能",
+    "module": "Python",
     "difficulty": 1,
     "question": "线程和进程有什么区别？",
     "answer": "进程是资源分配的基本单位，拥有独立内存空间；线程是 CPU 调度的基本单位，同一进程内的线程共享内存。进程隔离性更好但开销更大，线程更轻量但要注意共享数据的安全问题。Python 中 CPU 密集任务常考虑多进程，I/O 密集任务可用多线程或异步。",
@@ -565,7 +565,7 @@
   },
   {
     "id": "python-interview-core-048",
-    "module": "Python并发与性能",
+    "module": "Python",
     "difficulty": 2,
     "question": "有 GIL 是不是就不需要考虑线程安全？",
     "answer": "不是。GIL 只能保证同一时刻一个线程执行 Python 字节码，但不能保证多步复合操作一定安全。多个线程共享列表、字典、计数器或业务状态时，仍然可能发生竞态条件。涉及共享可变状态时，仍然要考虑锁、队列或避免共享。",
@@ -577,7 +577,7 @@
   },
   {
     "id": "python-interview-core-049",
-    "module": "Python并发与性能",
+    "module": "Python",
     "difficulty": 2,
     "question": "代码运行慢，怎么分析瓶颈？",
     "answer": "先判断是 CPU、I/O、数据库、网络还是算法问题。可以用 timeit 做小片段计时，用 cProfile 看函数耗时，用日志或链路追踪定位慢接口。定位后再决定是优化算法、减少查询、加缓存、并发处理还是异步化。",
@@ -589,7 +589,7 @@
   },
   {
     "id": "python-interview-core-050",
-    "module": "Python并发与性能",
+    "module": "Python",
     "difficulty": 2,
     "question": "Python 多线程适合什么场景？",
     "answer": "Python 多线程更适合 I/O 密集场景，比如网络请求、文件读写、数据库访问。因为这些任务大量时间在等待外部资源，线程切换可以提高整体吞吐。CPU 密集计算受 GIL 影响更明显，通常考虑多进程、向量化库或把计算交给底层扩展。",
