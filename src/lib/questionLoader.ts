@@ -61,7 +61,11 @@ export const BUILTIN_MODULE_FILES: readonly string[] = BUILTIN_CATEGORIES.flatMa
 export const BUILTIN_QUESTIONS_VERSION = '0.24.0'
 
 const ACTIVE_BUILTIN_MODULE_FILES = new Set(BUILTIN_MODULE_FILES)
-const ACTIVE_BUILTIN_MODULES = new Set(['Agent面试核心'])
+const ACTIVE_BUILTIN_MODULES = new Set(
+  Object.values(DEFAULT_CATEGORY_MAP)
+    .filter((category) => category.builtin)
+    .flatMap((category) => category.modules),
+)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

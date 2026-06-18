@@ -37,6 +37,12 @@ let _allQuestions: Question[] = []
 let _loaded = false
 let _loading = false
 const _waiters: Array<() => void> = []
+const QUESTIONS_UPDATED_EVENT = 'iface:questions-updated'
+
+function notifyQuestionsUpdated(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new Event(QUESTIONS_UPDATED_EVENT))
+}
 
 async function ensureLoaded(): Promise<Question[]> {
   if (_loaded) return _allQuestions
@@ -74,6 +80,7 @@ async function ensureLoaded(): Promise<Question[]> {
       const updated = await getAllQuestions()
       if (updated.length !== _allQuestions.length) {
         _allQuestions = updated
+        notifyQuestionsUpdated()
         _waiters.forEach((fn) => {
           fn()
         })
@@ -194,6 +201,14 @@ export function useQuestions(
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    const onQuestionsUpdated = () => {
+      setAllQuestions(_allQuestions)
+    }
+    window.addEventListener(QUESTIONS_UPDATED_EVENT, onQuestionsUpdated)
+    return () => window.removeEventListener(QUESTIONS_UPDATED_EVENT, onQuestionsUpdated)
+  }, [])
 
   const reload = useCallback(async () => {
     invalidateQuestionsCache()
