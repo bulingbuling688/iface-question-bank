@@ -45,6 +45,10 @@ function listFiles(dir: string, suffix: string): string[] {
   return results.sort()
 }
 
+function normalizePathForCompare(path: string): string {
+  return path.replace(/\\/g, '/')
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -98,10 +102,10 @@ if (existsSync(join(distDir, 'sw.js'))) {
   }
 
   const publicQuestionFiles = listFiles(publicQuestionsDir, '.json').map((file) =>
-    file.replace(/^public\//, ''),
+    normalizePathForCompare(file).replace(/^public\//, ''),
   )
   const distQuestionFiles = listFiles(join(distDir, 'questions'), '.json').map((file) =>
-    file.replace(/^dist\//, ''),
+    normalizePathForCompare(file).replace(/^dist\//, ''),
   )
 
   if (publicQuestionFiles.length === 0) {

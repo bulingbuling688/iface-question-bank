@@ -25,7 +25,10 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const repoRoot = join(scriptDir, '..')
 const questionRoot = join(repoRoot, 'public/questions')
 const MIN_ANSWER_LENGTH = 180
-const SHORT_ANSWER_ALLOWED_FILES = new Set(['public/questions/agent-interview-core/core.json'])
+const SHORT_ANSWER_ALLOWED_FILES = new Set([
+  'public/questions/agent-interview-core/core.json',
+  'public/questions/python/core.json',
+])
 const MIN_TAGS = 2
 
 function findJsonFiles(dir: string): string[] {

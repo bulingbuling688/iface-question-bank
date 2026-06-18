@@ -623,6 +623,19 @@ export const DEFAULT_CATEGORY_MAP: CategoryMap = {
     builtin: true,
     order: 0,
   },
+  'Python 面试综合': {
+    name: 'Python 面试综合',
+    modules: [
+      'Python数据类型',
+      'Python函数与装饰器',
+      'Python迭代器与生成器',
+      'Python面向对象',
+      'Python异常与模块',
+      'Python并发与性能',
+    ],
+    builtin: true,
+    order: 1,
+  },
 }
 
 // ─── Category map ─────────────────────────────────────────────────────────────

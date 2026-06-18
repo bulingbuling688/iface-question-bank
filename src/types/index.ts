@@ -2,6 +2,13 @@
 export const BUILTIN_MODULES = [
   // Agent 面试核心
   'Agent面试核心',
+  // Python 面试综合
+  'Python数据类型',
+  'Python函数与装饰器',
+  'Python迭代器与生成器',
+  'Python面向对象',
+  'Python异常与模块',
+  'Python并发与性能',
 ] as const
 
 export type BuiltinModule = (typeof BUILTIN_MODULES)[number]
@@ -10,6 +17,12 @@ export type BuiltinModule = (typeof BUILTIN_MODULES)[number]
 export const BUILTIN_MODULE_CATEGORY: Record<string, string> = {
   // Agent 面试核心
   Agent面试核心: 'Agent 面试核心',
+  Python数据类型: 'Python 面试综合',
+  Python函数与装饰器: 'Python 面试综合',
+  Python迭代器与生成器: 'Python 面试综合',
+  Python面向对象: 'Python 面试综合',
+  Python异常与模块: 'Python 面试综合',
+  Python并发与性能: 'Python 面试综合',
 }
 
 // Module is now open — any string is valid, enabling custom topics like Golang, Java, etc.
@@ -266,6 +279,12 @@ export const MODULE_ICONS: Record<string, string> = {
   工具调用与工作流: '🛠️',
   评测与线上优化: '📈',
   Agent面试核心: '🎯',
+  Python数据类型: '🐍',
+  Python函数与装饰器: '🧩',
+  Python迭代器与生成器: '🔁',
+  Python面向对象: '🏛️',
+  Python异常与模块: '🧰',
+  Python并发与性能: '⚙️',
   // Common custom modules
   Golang: '🐹',
   Java: '☕',
@@ -302,6 +321,12 @@ export const MODULE_COLORS: Record<string, string> = {
   工具调用与工作流: 'from-amber-400 to-orange-500',
   评测与线上优化: 'from-rose-400 to-red-500',
   Agent面试核心: 'from-cyan-400 to-emerald-500',
+  Python数据类型: 'from-blue-400 to-yellow-500',
+  Python函数与装饰器: 'from-indigo-400 to-violet-500',
+  Python迭代器与生成器: 'from-cyan-400 to-blue-500',
+  Python面向对象: 'from-amber-400 to-orange-500',
+  Python异常与模块: 'from-rose-400 to-red-500',
+  Python并发与性能: 'from-teal-400 to-emerald-500',
   Golang: 'from-sky-400 to-cyan-500',
   Java: 'from-orange-400 to-red-500',
   Python: 'from-blue-400 to-yellow-500',
