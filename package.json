@@ -11,6 +11,7 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "check:ai": "bun scripts/checkAI.ts",
+    "check:account-auth": "bun scripts/checkAccountAuth.ts",
     "check:backup": "bun scripts/checkBackup.ts",
     "check:docs": "bun scripts/checkDocsAssets.ts",
     "check:external": "bun scripts/checkExternalServices.ts",

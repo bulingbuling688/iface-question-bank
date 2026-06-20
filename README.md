@@ -32,8 +32,8 @@ Current capabilities:
 | Layer | Technology |
 |---|---|
 | Frontend framework | React 19 + TypeScript |
-| Backend framework | Cloudflare Worker for `/api/sync/*` |
-| Database | Browser IndexedDB + Cloudflare D1 sync snapshots |
+| Backend framework | Cloudflare Worker for `/api/*` account and sync endpoints |
+| Database | Browser IndexedDB + Cloudflare D1 account/sync snapshots |
 | Build tool | Vite + Bun |
 | Deployment style | Static files served by Nginx on VPS, sync API served by Cloudflare Worker |
 
@@ -76,6 +76,7 @@ The static VPS deployment does not require server-side secrets.
 | Name | Purpose | Required | Example |
 |---|---|---|---|
 | VITE_GITHUB_CLIENT_ID | Optional GitHub OAuth client ID exposed to the browser at build time | No | your_github_oauth_app_client_id |
+| AUTH_PEPPER | Cloudflare Worker secret used when hashing account passwords | Yes for account login | generated-long-random-secret |
 | IFACE_AI_API_KEY | Optional local smoke-test API key for CLI checks only | No | sk-*** |
 | IFACE_AI_BASE_URL | Optional local smoke-test AI base URL for CLI checks only | No | https://api.example.com/v1 |
 | IFACE_AI_MODEL | Optional local smoke-test model name for CLI checks only | No | gpt-example |
@@ -83,7 +84,13 @@ The static VPS deployment does not require server-side secrets.
 
 Do not commit real keys. Runtime API keys entered in the app are stored in the user's browser.
 
-Cloudflare D1 sync does not require committed secrets. The browser creates a per-user sync identity, stores the secret locally, and the Worker stores only a SHA-256 hash in D1.
+Cloudflare D1 legacy sync does not require committed secrets. The browser creates a per-user sync identity, stores the secret locally, and the Worker stores only a SHA-256 hash in D1.
+
+First-party account/password login requires `AUTH_PEPPER` as a Cloudflare Worker secret. Set it with:
+
+```bash
+bunx wrangler secret put AUTH_PEPPER
+```
 
 ## Deployment
 
@@ -114,7 +121,7 @@ VPS path:
 Runtime:
 
 ```text
-Static files served by Nginx; `/api/sync/*` served by Cloudflare Worker
+Static files served by Nginx; `/api/*` served by Cloudflare Worker
 ```
 
 Build command:
@@ -169,13 +176,13 @@ A iface-question-bank -> 34.81.224.158, proxied
 Cloudflare route:
 
 ```text
-iface-question-bank.chatapi.fun/api/sync/*
+iface-question-bank.chatapi.fun/api/*
 ```
 
 Environment file:
 
 ```text
-Not applicable
+Cloudflare Worker secret: `AUTH_PEPPER`
 ```
 
 ## Directory Structure
@@ -232,8 +239,8 @@ bunx wrangler deploy
 
 ## Maintenance Notes
 
-- The VPS deployment is static except for the Cloudflare Worker route `/api/sync/*`.
-- D1 sync stores compact backup snapshots, not the built-in Agent question JSON files.
+- The VPS deployment is static except for the Cloudflare Worker route `/api/*`.
+- D1 account sync stores compact backup snapshots, not the built-in question JSON files.
 - GitHub login and Gist backup require a compatible server-side OAuth callback before they should be considered production-ready on this domain.
 - The app itself remains usable for local question practice without GitHub login.
 - Do not modify the protected production subdomains `api.chatapi.fun`, `cpa.chatapi.fun`, `helper.chatapi.fun`, or `grok.chatapi.fun` for this project.

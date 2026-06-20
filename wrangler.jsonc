@@ -8,7 +8,7 @@
   "workers_dev": false,
   "routes": [
     {
-      "pattern": "iface-question-bank.chatapi.fun/api/sync/*",
+      "pattern": "iface-question-bank.chatapi.fun/api/*",
       "zone_name": "chatapi.fun"
     }
   ],
