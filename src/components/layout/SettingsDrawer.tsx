@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { invalidateQuestionsCache } from '@/hooks/useQuestions'
-import {
-  deleteAccountCloudSnapshot,
-  pullFromAccount,
-  pushToAccount,
-} from '@/lib/accountSync'
+import { deleteAccountCloudSnapshot, pullFromAccount, pushToAccount } from '@/lib/accountSync'
 import { buildChatCompletionsBody } from '@/lib/aiClient'
 import {
   buildD1SyncCode,
@@ -54,6 +50,7 @@ import {
   parseImportPreview,
 } from '@/lib/localBackup'
 import { BUILTIN_CATEGORIES } from '@/lib/questionLoader'
+import { useAccountStore } from '@/store/useAccountStore'
 import {
   AI_PROVIDER_PRESETS,
   type AIConfig,
@@ -65,7 +62,6 @@ import {
   getAIProviderPreset,
   useAIStore,
 } from '@/store/useAIStore'
-import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import {
   DAILY_GOAL_DEFAULT,
@@ -636,7 +632,14 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     hiddenCategories,
     toggleCategoryVisibility,
   } = useStudyStore()
-  const { token, user: githubUser, isLoggedIn, loading: authLoading, login, logout } = useAuthStore()
+  const {
+    token,
+    user: githubUser,
+    isLoggedIn,
+    loading: authLoading,
+    login,
+    logout,
+  } = useAuthStore()
   const {
     user: accountUser,
     isLoggedIn: accountLoggedIn,
@@ -1244,7 +1247,9 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     setAccountSyncDeleting(false)
     setLastSyncResult({
       ok: result.ok,
-      message: result.ok ? '账号云端备份已删除' : `账号云端备份删除失败：${result.error ?? '未知错误'}`,
+      message: result.ok
+        ? '账号云端备份已删除'
+        : `账号云端备份删除失败：${result.error ?? '未知错误'}`,
     })
   }, [])
 

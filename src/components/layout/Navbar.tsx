@@ -3,8 +3,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { SettingsDrawer } from '@/components/layout/SettingsDrawer'
 import { pushToAccount } from '@/lib/accountSync'
 import { preloadPath } from '@/lib/routePreload'
-import { useAIStore } from '@/store/useAIStore'
 import { useAccountStore } from '@/store/useAccountStore'
+import { useAIStore } from '@/store/useAIStore'
 import { useStudyStore } from '@/store/useStudyStore'
 
 const navItems = [
@@ -28,6 +28,7 @@ export function Navbar() {
   const [accountBusy, setAccountBusy] = useState(false)
   const [accountMessage, setAccountMessage] = useState<string | null>(null)
   const scrolledRef = useRef(false)
+  const locationKey = `${location.pathname}${location.search}`
 
   useEffect(() => {
     let frame = 0
@@ -64,9 +65,10 @@ export function Navbar() {
   }, [mobileOpen])
 
   useEffect(() => {
+    if (!locationKey) return
     setAccountOpen(false)
     setAccountMessage(null)
-  }, [location.pathname, location.search])
+  }, [locationKey])
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -234,7 +236,7 @@ export function Navbar() {
             {/* Settings button */}
             {accountLoading ? (
               <div
-                aria-label="账号加载中"
+                aria-hidden="true"
                 style={{
                   width: 54,
                   height: 28,
@@ -687,9 +689,7 @@ export function Navbar() {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                {accountLabel}
-              </p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{accountLabel}</p>
               <p
                 style={{
                   marginTop: 3,

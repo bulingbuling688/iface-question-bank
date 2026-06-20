@@ -40,8 +40,18 @@ interface MockDbState {
   users: UserRow[]
   sessions: SessionRow[]
   snapshots: SnapshotRow[]
-  syncProfiles: Array<{ profile_id: string; secret_hash: string; created_at: string; updated_at: string }>
-  syncSnapshots: Array<{ profile_id: string; payload: string; payload_hash: string; updated_at: string }>
+  syncProfiles: Array<{
+    profile_id: string
+    secret_hash: string
+    created_at: string
+    updated_at: string
+  }>
+  syncSnapshots: Array<{
+    profile_id: string
+    payload: string
+    payload_hash: string
+    updated_at: string
+  }>
 }
 
 interface D1Result {
@@ -97,7 +107,10 @@ function createMockD1() {
           return (state.users.find((row) => row.email_normalized === values[0]) ?? null) as T | null
         }
 
-        if (normalizedSql.includes('FROM user_sessions') && normalizedSql.includes('token_hash = ?')) {
+        if (
+          normalizedSql.includes('FROM user_sessions') &&
+          normalizedSql.includes('token_hash = ?')
+        ) {
           const session = state.sessions.find((row) => row.token_hash === values[0])
           if (!session) return null
           const user = state.users.find((row) => row.id === session.user_id)
@@ -116,11 +129,13 @@ function createMockD1() {
         }
 
         if (normalizedSql.includes('FROM sync_profiles WHERE profile_id = ?')) {
-          return (state.syncProfiles.find((row) => row.profile_id === values[0]) ?? null) as T | null
+          return (state.syncProfiles.find((row) => row.profile_id === values[0]) ??
+            null) as T | null
         }
 
         if (normalizedSql.includes('FROM sync_snapshots WHERE profile_id = ?')) {
-          return (state.syncSnapshots.find((row) => row.profile_id === values[0]) ?? null) as T | null
+          return (state.syncSnapshots.find((row) => row.profile_id === values[0]) ??
+            null) as T | null
         }
 
         throw new Error(`Unhandled first SQL: ${normalizedSql}`)
@@ -140,7 +155,18 @@ function createMockD1() {
             passwordIterations,
             createdAt,
             updatedAt,
-          ] = values as [string, string, string, string, string, string, string, number, string, string]
+          ] = values as [
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            string,
+            number,
+            string,
+            string,
+          ]
           state.users.push({
             id,
             email,
@@ -209,14 +235,24 @@ function createMockD1() {
         }
 
         if (normalizedSql.startsWith('INSERT INTO user_snapshots')) {
-          const [userId, payload, payloadHash, updatedAt] = values as [string, string, string, string]
+          const [userId, payload, payloadHash, updatedAt] = values as [
+            string,
+            string,
+            string,
+            string,
+          ]
           const existing = state.snapshots.find((row) => row.user_id === userId)
           if (existing) {
             existing.payload = payload
             existing.payload_hash = payloadHash
             existing.updated_at = updatedAt
           } else {
-            state.snapshots.push({ user_id: userId, payload, payload_hash: payloadHash, updated_at: updatedAt })
+            state.snapshots.push({
+              user_id: userId,
+              payload,
+              payload_hash: payloadHash,
+              updated_at: updatedAt,
+            })
           }
           return { success: true }
         }
@@ -228,7 +264,12 @@ function createMockD1() {
         }
 
         if (normalizedSql.startsWith('INSERT INTO sync_profiles')) {
-          const [profileId, secretHash, createdAt, updatedAt] = values as [string, string, string, string]
+          const [profileId, secretHash, createdAt, updatedAt] = values as [
+            string,
+            string,
+            string,
+            string,
+          ]
           state.syncProfiles.push({
             profile_id: profileId,
             secret_hash: secretHash,
@@ -239,7 +280,12 @@ function createMockD1() {
         }
 
         if (normalizedSql.startsWith('INSERT INTO sync_snapshots')) {
-          const [profileId, payload, payloadHash, updatedAt] = values as [string, string, string, string]
+          const [profileId, payload, payloadHash, updatedAt] = values as [
+            string,
+            string,
+            string,
+            string,
+          ]
           const existing = state.syncSnapshots.find((row) => row.profile_id === profileId)
           if (existing) {
             existing.payload = payload
@@ -256,7 +302,9 @@ function createMockD1() {
           return { success: true }
         }
 
-        if (normalizedSql.startsWith('UPDATE sync_profiles SET updated_at = ? WHERE profile_id = ?')) {
+        if (
+          normalizedSql.startsWith('UPDATE sync_profiles SET updated_at = ? WHERE profile_id = ?')
+        ) {
           const [updatedAt, profileId] = values as [string, string]
           const profile = state.syncProfiles.find((row) => row.profile_id === profileId)
           if (profile) profile.updated_at = updatedAt
@@ -280,11 +328,7 @@ function createMockD1() {
   }
 }
 
-async function request(
-  env: unknown,
-  path: string,
-  init: RequestInit = {},
-): Promise<Response> {
+async function request(env: unknown, path: string, init: RequestInit = {}): Promise<Response> {
   return worker.fetch(new Request(`https://iface-question-bank.chatapi.fun${path}`, init), env)
 }
 
@@ -313,10 +357,18 @@ const registerA = await request(env, '/api/auth/register', {
 const registerAJson = await readJson(registerA)
 const cookieA = getSessionCookie(registerA)
 assertEqual('register status', registerA.status, 200)
-assert('register returns user', Boolean((registerAJson.user as Record<string, unknown>)?.id), 'missing user id')
+assert(
+  'register returns user',
+  Boolean((registerAJson.user as Record<string, unknown>)?.id),
+  'missing user id',
+)
 assert('register sets httpOnly cookie', cookieA.length > 0, 'missing iface_session cookie')
 assertEqual('email normalized in db', state.users[0]?.email_normalized, 'alice@example.com')
-assert('password is hashed', state.users[0]?.password_hash !== 'password-123', 'password stored as plaintext')
+assert(
+  'password is hashed',
+  state.users[0]?.password_hash !== 'password-123',
+  'password stored as plaintext',
+)
 
 const duplicate = await request(env, '/api/auth/register', {
   method: 'POST',
@@ -396,7 +448,8 @@ const pullAJson = await readJson(pullA)
 assertEqual('account snapshot pull status', pullA.status, 200)
 assert(
   'account snapshots are isolated',
-  JSON.stringify(pullAJson).includes('alice-question') && !JSON.stringify(pullAJson).includes('bob-question'),
+  JSON.stringify(pullAJson).includes('alice-question') &&
+    !JSON.stringify(pullAJson).includes('bob-question'),
   'snapshot leaked across users',
 )
 
@@ -428,7 +481,11 @@ const logoutA = await request(env, '/api/auth/logout', {
   headers: { cookie: cookieALogin },
 })
 assertEqual('logout status', logoutA.status, 200)
-assert('logout clears cookie', (logoutA.headers.get('set-cookie') ?? '').includes('Max-Age=0'), 'cookie not cleared')
+assert(
+  'logout clears cookie',
+  (logoutA.headers.get('set-cookie') ?? '').includes('Max-Age=0'),
+  'cookie not cleared',
+)
 
 const meAfterLogout = await request(env, '/api/auth/me', {
   headers: { cookie: cookieALogin },

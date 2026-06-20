@@ -47,10 +47,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   headers.set('cache-control', 'no-store')
   headers.set('access-control-allow-origin', '*')
   headers.set('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS')
-  headers.set(
-    'access-control-allow-headers',
-    `${PROFILE_HEADER}, ${SECRET_HEADER}, content-type`,
-  )
+  headers.set('access-control-allow-headers', `${PROFILE_HEADER}, ${SECRET_HEADER}, content-type`)
   return new Response(JSON.stringify(body), { ...init, headers })
 }
 
@@ -190,14 +187,9 @@ function sessionCookie(token: string): string {
 }
 
 function clearSessionCookie(): string {
-  return [
-    `${SESSION_COOKIE}=`,
-    'HttpOnly',
-    'Secure',
-    'SameSite=Lax',
-    'Path=/',
-    'Max-Age=0',
-  ].join('; ')
+  return [`${SESSION_COOKIE}=`, 'HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/', 'Max-Age=0'].join(
+    '; ',
+  )
 }
 
 function authResponse(body: unknown, cookie?: string, init: ResponseInit = {}): Response {
@@ -394,12 +386,7 @@ async function handleAccountRegister(request: Request, env: Env): Promise<Respon
   const now = new Date().toISOString()
   const userId = randomId('usr')
   const salt = randomToken(18)
-  const passwordHash = await hashPassword(
-    password,
-    salt,
-    getAuthPepper(env),
-    PASSWORD_ITERATIONS,
-  )
+  const passwordHash = await hashPassword(password, salt, getAuthPepper(env), PASSWORD_ITERATIONS)
 
   await env.DB.prepare(
     `INSERT INTO users

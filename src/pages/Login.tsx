@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { pushToAccount } from '@/lib/accountSync'
-import { useAIStore } from '@/store/useAIStore'
 import { useAccountStore } from '@/store/useAccountStore'
+import { useAIStore } from '@/store/useAIStore'
 
 type Mode = 'login' | 'register'
 
@@ -140,7 +140,10 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form
+            onSubmit={handleSubmit}
+            style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
+          >
             {isRegister && (
               <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-2)' }}>昵称</span>
