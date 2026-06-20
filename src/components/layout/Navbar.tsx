@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { SettingsDrawer } from '@/components/layout/SettingsDrawer'
+import { pushToAccount } from '@/lib/accountSync'
 import { preloadPath } from '@/lib/routePreload'
+import { useAIStore } from '@/store/useAIStore'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useStudyStore } from '@/store/useStudyStore'
 
 const navItems = [
@@ -16,9 +19,14 @@ const navItems = [
 export function Navbar() {
   const location = useLocation()
   const { theme, toggleTheme } = useStudyStore()
+  const { sessions } = useAIStore()
+  const { user, isLoggedIn, loading: accountLoading, logout } = useAccountStore()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [accountBusy, setAccountBusy] = useState(false)
+  const [accountMessage, setAccountMessage] = useState<string | null>(null)
   const scrolledRef = useRef(false)
 
   useEffect(() => {
@@ -56,6 +64,11 @@ export function Navbar() {
   }, [mobileOpen])
 
   useEffect(() => {
+    setAccountOpen(false)
+    setAccountMessage(null)
+  }, [location.pathname, location.search])
+
+  useEffect(() => {
     if (!mobileOpen) return
 
     const previousOverflow = document.body.style.overflow
@@ -70,6 +83,38 @@ export function Navbar() {
     return [item.path, ...(item.activePaths ?? [])].some((path) =>
       location.pathname.startsWith(path),
     )
+  }
+
+  const loginState = { from: `${location.pathname}${location.search}` }
+  const accountLabel = user?.displayName || user?.email.split('@')[0] || '账号'
+
+  const handleAccountSync = async () => {
+    if (!isLoggedIn || accountBusy) return
+    setAccountBusy(true)
+    setAccountMessage(null)
+    try {
+      const result = await pushToAccount(Object.values(sessions))
+      setAccountMessage(result.ok ? '已同步到云端' : result.error || '同步失败')
+    } catch (err) {
+      setAccountMessage(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAccountBusy(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    if (accountBusy) return
+    setAccountBusy(true)
+    setAccountMessage(null)
+    try {
+      await logout()
+      setAccountOpen(false)
+      setMobileOpen(false)
+    } catch (err) {
+      setAccountMessage(err instanceof Error ? err.message : String(err))
+    } finally {
+      setAccountBusy(false)
+    }
   }
 
   return (
@@ -187,6 +232,196 @@ export function Navbar() {
             }}
           >
             {/* Settings button */}
+            {accountLoading ? (
+              <div
+                aria-label="账号加载中"
+                style={{
+                  width: 54,
+                  height: 28,
+                  borderRadius: 8,
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              />
+            ) : isLoggedIn ? (
+              <div style={{ position: 'relative' }} className="hidden-mobile">
+                <button
+                  type="button"
+                  onClick={() => setAccountOpen((v) => !v)}
+                  aria-expanded={accountOpen}
+                  style={{
+                    height: 32,
+                    maxWidth: 132,
+                    padding: '0 10px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-subtle)',
+                    background: accountOpen ? 'var(--surface-2)' : 'transparent',
+                    color: 'var(--text)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {accountLabel.slice(0, 1).toUpperCase()}
+                  </span>
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {accountLabel}
+                  </span>
+                </button>
+
+                {accountOpen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 38,
+                      width: 220,
+                      padding: 8,
+                      borderRadius: 10,
+                      border: '1px solid var(--border-subtle)',
+                      background: 'var(--surface)',
+                      boxShadow: 'var(--shadow-lg)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 4,
+                    }}
+                  >
+                    <div style={{ padding: '7px 8px 9px' }}>
+                      <p
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: 'var(--text)',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {accountLabel}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--text-3)',
+                          marginTop: 3,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {user?.email}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAccountSync}
+                      disabled={accountBusy}
+                      style={{
+                        padding: '8px 9px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--text-2)',
+                        textAlign: 'left',
+                        cursor: accountBusy ? 'wait' : 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      {accountBusy ? '同步中…' : '同步到云端'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsOpen(true)
+                        setAccountOpen(false)
+                      }}
+                      style={{
+                        padding: '8px 9px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--text-2)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      云同步设置
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      disabled={accountBusy}
+                      style={{
+                        padding: '8px 9px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'transparent',
+                        color: 'var(--danger)',
+                        textAlign: 'left',
+                        cursor: accountBusy ? 'wait' : 'pointer',
+                        fontSize: 12,
+                      }}
+                    >
+                      退出登录
+                    </button>
+                    {accountMessage && (
+                      <p style={{ padding: '4px 8px', fontSize: 11, color: 'var(--text-3)' }}>
+                        {accountMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                state={loginState}
+                onPointerEnter={() => preloadPath('/login')}
+                onFocus={() => preloadPath('/login')}
+                className="hidden-mobile"
+                style={{
+                  height: 32,
+                  padding: '0 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(var(--primary-rgb),0.24)',
+                  background: 'var(--primary-light)',
+                  color: 'var(--primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  textDecoration: 'none',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                登录
+              </Link>
+            )}
+
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -426,6 +661,109 @@ export function Navbar() {
         })}
 
         {/* Settings entry in mobile menu */}
+        {accountLoading ? (
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              color: 'var(--text-3)',
+              fontSize: 14,
+              borderTop: '1px solid var(--border-subtle)',
+              marginTop: 4,
+            }}
+          >
+            账号加载中…
+          </div>
+        ) : isLoggedIn ? (
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              borderTop: '1px solid var(--border-subtle)',
+              marginTop: 4,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                {accountLabel}
+              </p>
+              <p
+                style={{
+                  marginTop: 3,
+                  fontSize: 12,
+                  color: 'var(--text-3)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {user?.email}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleAccountSync}
+                disabled={accountBusy}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  border: '1px solid var(--border-subtle)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-2)',
+                  fontSize: 12,
+                  cursor: accountBusy ? 'wait' : 'pointer',
+                }}
+              >
+                {accountBusy ? '同步中…' : '同步'}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={accountBusy}
+                style={{
+                  padding: '7px 10px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(239,68,68,0.24)',
+                  background: 'var(--danger-light)',
+                  color: 'var(--danger)',
+                  fontSize: 12,
+                  cursor: accountBusy ? 'wait' : 'pointer',
+                }}
+              >
+                退出
+              </button>
+            </div>
+            {accountMessage && (
+              <p style={{ fontSize: 11, color: 'var(--text-3)' }}>{accountMessage}</p>
+            )}
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            state={loginState}
+            onPointerEnter={() => preloadPath('/login')}
+            onFocus={() => preloadPath('/login')}
+            onClick={() => setMobileOpen(false)}
+            style={{
+              padding: '10px 14px',
+              borderRadius: 10,
+              fontSize: 15,
+              fontWeight: 500,
+              color: 'var(--primary)',
+              background: 'var(--primary-light)',
+              textDecoration: 'none',
+              borderTop: '1px solid var(--border-subtle)',
+              marginTop: 4,
+            }}
+          >
+            登录账号
+          </Link>
+        )}
+
         <button
           type="button"
           onClick={() => {

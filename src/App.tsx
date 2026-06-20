@@ -19,6 +19,7 @@ const JdMatch = lazy(routeLoaders.jdMatch)
 const AITool = lazy(routeLoaders.aiTool)
 const ImportPage = lazy(routeLoaders.importPage)
 const PromptPage = lazy(routeLoaders.promptPage)
+const Login = lazy(routeLoaders.login)
 
 function PageLoader() {
   return (
@@ -106,6 +107,7 @@ function AppRoutes() {
           <Route path="/tools/:toolId" element={<AITool />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/prompt" element={<PromptPage />} />
+          <Route path="/login" element={<Login />} />
         </Routes>
       </Suspense>
     </AppErrorBoundary>

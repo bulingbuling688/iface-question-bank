@@ -10,6 +10,7 @@ export const routeLoaders = {
   aiTool: () => import('@/pages/AITool'),
   importPage: () => import('@/pages/ImportPage'),
   promptPage: () => import('@/pages/PromptPage'),
+  login: () => import('@/pages/Login'),
 }
 
 export type RoutePreloadKey = keyof typeof routeLoaders
@@ -34,6 +35,7 @@ export function getRoutePreloadKey(pathname: string): RoutePreloadKey | null {
   if (pathname === '/weak') return 'weakPoints'
   if (pathname === '/import') return 'importPage'
   if (pathname === '/prompt') return 'promptPage'
+  if (pathname === '/login') return 'login'
   if (pathname === '/tools/jd-match') return 'jdMatch'
   if (pathname.startsWith('/tools/')) return 'aiTool'
   if (pathname === '/tools') return 'tools'
