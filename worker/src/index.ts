@@ -639,37 +639,37 @@ export default {
         return jsonResponse({ ok: true, service: 'iface-question-bank-sync' })
       }
       if (pathname === '/api/auth/register' && request.method === 'POST') {
-        return handleAccountRegister(request, env)
+        return await handleAccountRegister(request, env)
       }
       if (pathname === '/api/auth/login' && request.method === 'POST') {
-        return handleAccountLogin(request, env)
+        return await handleAccountLogin(request, env)
       }
       if (pathname === '/api/auth/logout' && request.method === 'POST') {
-        return handleAccountLogout(request, env)
+        return await handleAccountLogout(request, env)
       }
       if (pathname === '/api/auth/me' && request.method === 'GET') {
-        return handleAccountMe(request, env)
+        return await handleAccountMe(request, env)
       }
       if (pathname === '/api/account/snapshot' && request.method === 'GET') {
-        return handleAccountSnapshotPull(request, env)
+        return await handleAccountSnapshotPull(request, env)
       }
       if (pathname === '/api/account/snapshot' && request.method === 'POST') {
-        return handleAccountSnapshotPush(request, env)
+        return await handleAccountSnapshotPush(request, env)
       }
       if (pathname === '/api/account/snapshot' && request.method === 'DELETE') {
-        return handleAccountSnapshotDelete(request, env)
+        return await handleAccountSnapshotDelete(request, env)
       }
       if (pathname === '/api/sync/register' && request.method === 'POST') {
-        return handleRegister(env)
+        return await handleRegister(env)
       }
       if (pathname === '/api/sync/pull' && request.method === 'GET') {
-        return handlePull(request, env)
+        return await handlePull(request, env)
       }
       if (pathname === '/api/sync/push' && request.method === 'POST') {
-        return handlePush(request, env)
+        return await handlePush(request, env)
       }
       if (pathname === '/api/sync/snapshot' && request.method === 'DELETE') {
-        return handleDelete(request, env)
+        return await handleDelete(request, env)
       }
       return errorResponse(404, 'Not found')
     } catch (err) {
