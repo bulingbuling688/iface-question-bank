@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { invalidateQuestionsCache } from '@/hooks/useQuestions'
+import {
+  deleteAccountCloudSnapshot,
+  pullFromAccount,
+  pushToAccount,
+} from '@/lib/accountSync'
 import { buildChatCompletionsBody } from '@/lib/aiClient'
 import {
   buildD1SyncCode,
@@ -59,6 +65,7 @@ import {
   getAIProviderPreset,
   useAIStore,
 } from '@/store/useAIStore'
+import { useAccountStore } from '@/store/useAccountStore'
 import { useAuthStore } from '@/store/useAuthStore'
 import {
   DAILY_GOAL_DEFAULT,
@@ -615,6 +622,7 @@ function formatRemoteMergeSummary(result: SyncResult): string {
 }
 
 export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
+  const navigate = useNavigate()
   const { config, sessions, updateConfig, resetConfig, clearAllSessions, upsertSessions } =
     useAIStore()
   const {
@@ -628,7 +636,13 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     hiddenCategories,
     toggleCategoryVisibility,
   } = useStudyStore()
-  const { token, user, isLoggedIn, loading: authLoading, login, logout } = useAuthStore()
+  const { token, user: githubUser, isLoggedIn, loading: authLoading, login, logout } = useAuthStore()
+  const {
+    user: accountUser,
+    isLoggedIn: accountLoggedIn,
+    loading: accountLoading,
+    logout: accountLogout,
+  } = useAccountStore()
 
   const [tab, setTab] = useState<Tab>('ai')
   const [localConfig, setLocalConfig] = useState<AIConfig>({ ...config })
@@ -660,6 +674,9 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   const [syncPushing, setSyncPushing] = useState(false)
   const [syncPulling, setSyncPulling] = useState(false)
   const [syncDeleting, setSyncDeleting] = useState(false)
+  const [accountSyncPushing, setAccountSyncPushing] = useState(false)
+  const [accountSyncPulling, setAccountSyncPulling] = useState(false)
+  const [accountSyncDeleting, setAccountSyncDeleting] = useState(false)
   const [dbSyncPushing, setDbSyncPushing] = useState(false)
   const [dbSyncPulling, setDbSyncPulling] = useState(false)
   const [dbSyncDeleting, setDbSyncDeleting] = useState(false)
@@ -1150,6 +1167,87 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
     }
   }, [sessions, upsertSessions])
 
+  const handleAccountPush = useCallback(async () => {
+    setAccountSyncPushing(true)
+    setLastSyncResult(null)
+    try {
+      const result = await pushToAccount(Object.values(sessions))
+      if (result.ok) {
+        if (result.aiSessions?.length) {
+          upsertSessions(result.aiSessions)
+        }
+        if (result.mergedRemoteQuestionCount) {
+          invalidateQuestionsCache()
+        }
+        setLastSyncResult({
+          ok: true,
+          message: `已保存到账号云端：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话${formatRemoteMergeSummary(result)}`,
+          at: result.exportedAt,
+        })
+      } else {
+        setLastSyncResult({
+          ok: false,
+          message: `账号云端保存失败：${result.error ?? '未知错误'}`,
+        })
+      }
+    } catch (err) {
+      setLastSyncResult({
+        ok: false,
+        message: `账号云端保存失败：${err instanceof Error ? err.message : String(err)}`,
+      })
+    } finally {
+      setAccountSyncPushing(false)
+    }
+  }, [sessions, upsertSessions])
+
+  const handleAccountPull = useCallback(async () => {
+    if (!confirm('确定要从账号云端恢复数据吗？会和本地较新的数据合并。')) return
+    setAccountSyncPulling(true)
+    setLastSyncResult(null)
+    try {
+      const result = await pullFromAccount(Object.values(sessions))
+      if (result === null) {
+        setLastSyncResult({
+          ok: false,
+          message: '账号云端还没有备份，请先执行「保存到账号」',
+        })
+      } else if (result.ok) {
+        invalidateQuestionsCache()
+        if (result.aiSessions?.length) {
+          upsertSessions(result.aiSessions)
+        }
+        setLastSyncResult({
+          ok: true,
+          message: `已从账号云端同步：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话${formatRemoteMergeSummary(result)}`,
+          at: result.exportedAt,
+        })
+      } else {
+        setLastSyncResult({
+          ok: false,
+          message: `账号云端恢复失败：${result.error ?? '未知错误'}`,
+        })
+      }
+    } catch (err) {
+      setLastSyncResult({
+        ok: false,
+        message: `账号云端恢复失败：${err instanceof Error ? err.message : String(err)}`,
+      })
+    } finally {
+      setAccountSyncPulling(false)
+    }
+  }, [sessions, upsertSessions])
+
+  const handleAccountDelete = useCallback(async () => {
+    if (!confirm('确定要删除当前账号的云端备份吗？本机数据不受影响。')) return
+    setAccountSyncDeleting(true)
+    const result = await deleteAccountCloudSnapshot()
+    setAccountSyncDeleting(false)
+    setLastSyncResult({
+      ok: result.ok,
+      message: result.ok ? '账号云端备份已删除' : `账号云端备份删除失败：${result.error ?? '未知错误'}`,
+    })
+  }, [])
+
   const handleDbPull = useCallback(async () => {
     if (!confirm('确定要从数据库恢复数据吗？会和本地较新的数据合并。')) return
     setDbSyncPulling(true)
@@ -1426,7 +1524,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               ),
             }
             const active = tab === t
-            const showSyncDot = t === 'sync' && isLoggedIn && !active
+            const showSyncDot = t === 'sync' && (isLoggedIn || accountLoggedIn) && !active
             return (
               <button
                 type="button"
@@ -2354,6 +2452,257 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                     padding: '14px',
                     borderRadius: 12,
                     background: 'var(--surface-2)',
+                    border: '1px solid rgba(var(--primary-rgb),0.18)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 9,
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <IconDatabase />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        云端账号同步
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
+                        使用 iFace 账号保存进度、笔记和自定义题库
+                      </p>
+                    </div>
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        padding: '3px 8px',
+                        borderRadius: 99,
+                        background: accountLoggedIn ? 'var(--success-light)' : 'var(--surface-3)',
+                        color: accountLoggedIn ? 'var(--success)' : 'var(--text-3)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {accountLoggedIn ? '已登录' : '未登录'}
+                    </span>
+                  </div>
+
+                  {accountLoggedIn && accountUser ? (
+                    <>
+                      <div
+                        style={{
+                          padding: '9px 10px',
+                          borderRadius: 9,
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: 'var(--text)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {accountUser.displayName}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: 'var(--text-3)',
+                            marginTop: 2,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {accountUser.email}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={handleAccountPush}
+                          disabled={accountSyncPushing || accountSyncPulling}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 7,
+                            padding: '9px 10px',
+                            borderRadius: 9,
+                            border: '1px solid rgba(var(--primary-rgb),0.25)',
+                            background: 'var(--primary-light)',
+                            color: 'var(--primary)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor:
+                              accountSyncPushing || accountSyncPulling ? 'default' : 'pointer',
+                            opacity: accountSyncPushing || accountSyncPulling ? 0.65 : 1,
+                          }}
+                        >
+                          {accountSyncPushing ? (
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              style={{ animation: 'spin 1s linear infinite' }}
+                            >
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                            </svg>
+                          ) : (
+                            <IconUpload />
+                          )}
+                          {accountSyncPushing ? '保存中…' : '保存到账号'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAccountPull}
+                          disabled={accountSyncPushing || accountSyncPulling}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 7,
+                            padding: '9px 10px',
+                            borderRadius: 9,
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            color: 'var(--text-2)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor:
+                              accountSyncPushing || accountSyncPulling ? 'default' : 'pointer',
+                            opacity: accountSyncPushing || accountSyncPulling ? 0.55 : 1,
+                          }}
+                        >
+                          {accountSyncPulling ? (
+                            <svg
+                              width="14"
+                              height="14"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              style={{ animation: 'spin 1s linear infinite' }}
+                            >
+                              <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                            </svg>
+                          ) : (
+                            <IconDownload />
+                          )}
+                          {accountSyncPulling ? '恢复中…' : '从账号恢复'}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={handleAccountDelete}
+                          disabled={accountSyncDeleting}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(239,68,68,0.25)',
+                            background: 'transparent',
+                            color: 'var(--danger)',
+                            fontSize: 12,
+                            cursor: accountSyncDeleting ? 'default' : 'pointer',
+                            opacity: accountSyncDeleting ? 0.6 : 1,
+                          }}
+                        >
+                          <IconTrash />
+                          {accountSyncDeleting ? '删除中…' : '删除账号云端备份'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await accountLogout()
+                            setLastSyncResult({ ok: true, message: '已退出 iFace 账号' })
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            border: '1px solid var(--border)',
+                            background: 'transparent',
+                            color: 'var(--text-3)',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          退出账号
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      <p style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.5 }}>
+                        登录后，每个账号拥有独立云端数据。
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose()
+                          navigate('/login')
+                        }}
+                        disabled={accountLoading}
+                        style={{
+                          flexShrink: 0,
+                          padding: '8px 12px',
+                          borderRadius: 8,
+                          border: '1px solid var(--primary)',
+                          background: 'var(--primary)',
+                          color: 'white',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: accountLoading ? 'wait' : 'pointer',
+                          opacity: accountLoading ? 0.7 : 1,
+                        }}
+                      >
+                        {accountLoading ? '检查中…' : '登录'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    padding: '14px',
+                    borderRadius: 12,
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border-subtle)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -2378,10 +2727,10 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                        数据库同步
+                        兼容同步码
                       </p>
                       <p style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 2 }}>
-                        保存到 Cloudflare D1，当前站点同域接口
+                        旧版设备同步方式，新账号优先使用上方云端账号同步
                       </p>
                     </div>
                     <span
@@ -2752,7 +3101,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
               )}
 
               {/* Logged in */}
-              {isLoggedIn && user && (
+              {isLoggedIn && githubUser && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* User card */}
                   <div
@@ -2767,8 +3116,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                     }}
                   >
                     <img
-                      src={user.avatar_url}
-                      alt={user.login}
+                      src={githubUser.avatar_url}
+                      alt={githubUser.login}
                       style={{
                         width: 40,
                         height: 40,
@@ -2788,7 +3137,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {user.name || user.login}
+                        {githubUser.name || githubUser.login}
                       </p>
                       <p
                         style={{
@@ -2799,7 +3148,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        @{user.login}
+                        @{githubUser.login}
                       </p>
                     </div>
                     <button
