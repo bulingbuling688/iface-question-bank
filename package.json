@@ -18,7 +18,7 @@
     "check:external-records": "bun scripts/checkExternalSmokeRecords.ts",
     "smoke:external:ai": "bun run check:external -- --ai --record docs/external-ai-smoke-result.json",
     "smoke:external:gist": "bun run check:external -- --gist --record docs/external-gist-smoke-result.json",
-    "check:pwa": "bun scripts/checkPWAAssets.ts",
+    "check:pwa": "bun scripts/checkPWAAssets.ts && node scripts/checkPWAAutoRefresh.mjs",
     "check:quality-gate": "bun scripts/checkQualityGate.ts",
     "check:questions": "bun scripts/checkQuestions.ts",
     "check:release": "bun scripts/checkReleaseReadiness.ts",
