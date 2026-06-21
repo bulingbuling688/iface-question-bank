@@ -5,30 +5,6 @@ interface Failure {
   message: string
 }
 
-interface UserRow {
-  id: string
-  email: string
-  email_normalized: string
-  display_name: string
-  password_hash: string
-  password_salt: string
-  password_algo: string
-  password_iterations: number
-  created_at: string
-  updated_at: string
-  last_login_at: string | null
-}
-
-interface SessionRow {
-  id: string
-  user_id: string
-  token_hash: string
-  created_at: string
-  expires_at: string
-  last_seen_at: string
-  user_agent: string | null
-}
-
 interface SnapshotRow {
   user_id: string
   payload: string
@@ -37,9 +13,7 @@ interface SnapshotRow {
 }
 
 interface MockDbState {
-  users: UserRow[]
-  sessions: SessionRow[]
-  snapshots: SnapshotRow[]
+  accountSnapshots: SnapshotRow[]
   syncProfiles: Array<{
     profile_id: string
     secret_hash: string
@@ -86,9 +60,7 @@ function makeSnapshotPayload(label: string) {
 
 function createMockD1() {
   const state: MockDbState = {
-    users: [],
-    sessions: [],
-    snapshots: [],
+    accountSnapshots: [],
     syncProfiles: [],
     syncSnapshots: [],
   }
@@ -103,29 +75,9 @@ function createMockD1() {
       async first<T>() {
         const normalizedSql = sql.replace(/\s+/g, ' ').trim()
 
-        if (normalizedSql.includes('FROM users WHERE email_normalized = ?')) {
-          return (state.users.find((row) => row.email_normalized === values[0]) ?? null) as T | null
-        }
-
-        if (
-          normalizedSql.includes('FROM user_sessions') &&
-          normalizedSql.includes('token_hash = ?')
-        ) {
-          const session = state.sessions.find((row) => row.token_hash === values[0])
-          if (!session) return null
-          const user = state.users.find((row) => row.id === session.user_id)
-          if (!user) return null
-          return {
-            session_id: session.id,
-            user_id: user.id,
-            email: user.email,
-            display_name: user.display_name,
-            expires_at: session.expires_at,
-          } as T
-        }
-
         if (normalizedSql.includes('FROM user_snapshots WHERE user_id = ?')) {
-          return (state.snapshots.find((row) => row.user_id === values[0]) ?? null) as T | null
+          return (state.accountSnapshots.find((row) => row.user_id === values[0]) ??
+            null) as T | null
         }
 
         if (normalizedSql.includes('FROM sync_profiles WHERE profile_id = ?')) {
@@ -143,97 +95,6 @@ function createMockD1() {
       async run(): Promise<D1Result> {
         const normalizedSql = sql.replace(/\s+/g, ' ').trim()
 
-        if (normalizedSql.startsWith('INSERT INTO users')) {
-          const [
-            id,
-            email,
-            emailNormalized,
-            displayName,
-            passwordHash,
-            passwordSalt,
-            passwordAlgo,
-            passwordIterations,
-            createdAt,
-            updatedAt,
-          ] = values as [
-            string,
-            string,
-            string,
-            string,
-            string,
-            string,
-            string,
-            number,
-            string,
-            string,
-          ]
-          state.users.push({
-            id,
-            email,
-            email_normalized: emailNormalized,
-            display_name: displayName,
-            password_hash: passwordHash,
-            password_salt: passwordSalt,
-            password_algo: passwordAlgo,
-            password_iterations: passwordIterations,
-            created_at: createdAt,
-            updated_at: updatedAt,
-            last_login_at: null,
-          })
-          return { success: true }
-        }
-
-        if (normalizedSql.startsWith('INSERT INTO user_sessions')) {
-          const [id, userId, tokenHash, createdAt, expiresAt, lastSeenAt, userAgent] = values as [
-            string,
-            string,
-            string,
-            string,
-            string,
-            string,
-            string | null,
-          ]
-          state.sessions.push({
-            id,
-            user_id: userId,
-            token_hash: tokenHash,
-            created_at: createdAt,
-            expires_at: expiresAt,
-            last_seen_at: lastSeenAt,
-            user_agent: userAgent,
-          })
-          return { success: true }
-        }
-
-        if (normalizedSql.startsWith('UPDATE users SET last_login_at = ?')) {
-          const [lastLoginAt, updatedAt, userId] = values as [string, string, string]
-          const user = state.users.find((row) => row.id === userId)
-          if (user) {
-            user.last_login_at = lastLoginAt
-            user.updated_at = updatedAt
-          }
-          return { success: true }
-        }
-
-        if (normalizedSql.startsWith('UPDATE user_sessions SET last_seen_at = ?')) {
-          const [lastSeenAt, sessionId] = values as [string, string]
-          const session = state.sessions.find((row) => row.id === sessionId)
-          if (session) session.last_seen_at = lastSeenAt
-          return { success: true }
-        }
-
-        if (normalizedSql.startsWith('DELETE FROM user_sessions WHERE token_hash = ?')) {
-          const tokenHash = values[0] as string
-          state.sessions = state.sessions.filter((row) => row.token_hash !== tokenHash)
-          return { success: true }
-        }
-
-        if (normalizedSql.startsWith('DELETE FROM user_sessions WHERE expires_at <= ?')) {
-          const now = values[0] as string
-          state.sessions = state.sessions.filter((row) => row.expires_at > now)
-          return { success: true }
-        }
-
         if (normalizedSql.startsWith('INSERT INTO user_snapshots')) {
           const [userId, payload, payloadHash, updatedAt] = values as [
             string,
@@ -241,13 +102,13 @@ function createMockD1() {
             string,
             string,
           ]
-          const existing = state.snapshots.find((row) => row.user_id === userId)
+          const existing = state.accountSnapshots.find((row) => row.user_id === userId)
           if (existing) {
             existing.payload = payload
             existing.payload_hash = payloadHash
             existing.updated_at = updatedAt
           } else {
-            state.snapshots.push({
+            state.accountSnapshots.push({
               user_id: userId,
               payload,
               payload_hash: payloadHash,
@@ -259,7 +120,7 @@ function createMockD1() {
 
         if (normalizedSql.startsWith('DELETE FROM user_snapshots WHERE user_id = ?')) {
           const userId = values[0] as string
-          state.snapshots = state.snapshots.filter((row) => row.user_id !== userId)
+          state.accountSnapshots = state.accountSnapshots.filter((row) => row.user_id !== userId)
           return { success: true }
         }
 
@@ -343,43 +204,79 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
 }
 
 const { db, state } = createMockD1()
-const env = { DB: db, AUTH_PEPPER: 'unit-test-pepper' }
+const env = {
+  DB: db,
+  IFACE_SESSION_SECRET: 'unit-test-session-secret',
+  IFACE_AUTH_USERS: JSON.stringify([
+    {
+      id: 'user_a',
+      username: 'alpha',
+      password: 'alpha-password',
+      displayName: '账号 A',
+    },
+    {
+      id: 'user_b',
+      username: 'beta',
+      password: 'beta-password',
+      displayName: '账号 B',
+    },
+  ]),
+}
 
-const registerA = await request(env, '/api/auth/register', {
+const register = await request(env, '/api/auth/register', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    email: ' Alice@Example.COM ',
-    displayName: 'Alice',
-    password: 'password-123',
-  }),
+  body: JSON.stringify({ username: 'new-user', password: 'new-password' }),
 })
-const registerAJson = await readJson(registerA)
-const cookieA = getSessionCookie(registerA)
-assertEqual('register status', registerA.status, 200)
-assert(
-  'register returns user',
-  Boolean((registerAJson.user as Record<string, unknown>)?.id),
-  'missing user id',
-)
-assert('register sets httpOnly cookie', cookieA.length > 0, 'missing iface_session cookie')
-assertEqual('email normalized in db', state.users[0]?.email_normalized, 'alice@example.com')
-assert(
-  'password is hashed',
-  state.users[0]?.password_hash !== 'password-123',
-  'password stored as plaintext',
-)
+assertEqual('register endpoint is disabled', register.status, 404)
 
-const duplicate = await request(env, '/api/auth/register', {
+const loginA = await request(env, '/api/auth/login', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    email: 'alice@example.com',
-    displayName: 'Alice Again',
-    password: 'password-456',
-  }),
+  body: JSON.stringify({ username: ' alpha ', password: 'alpha-password' }),
 })
-assertEqual('duplicate register rejected', duplicate.status, 409)
+const loginAJson = await readJson(loginA)
+const cookieA = getSessionCookie(loginA)
+assertEqual('fixed account login status', loginA.status, 200)
+assertEqual(
+  'login returns fixed account id',
+  (loginAJson.user as Record<string, unknown>)?.id,
+  'user_a',
+)
+assertEqual(
+  'login returns display name',
+  (loginAJson.user as Record<string, unknown>)?.displayName,
+  '账号 A',
+)
+assert(
+  'login does not expose password',
+  !JSON.stringify(loginAJson).includes('alpha-password'),
+  'password leaked in login response',
+)
+assert('login sets httpOnly cookie', cookieA.length > 0, 'missing iface_session cookie')
+assert(
+  'login cookie is httpOnly',
+  (loginA.headers.get('set-cookie') ?? '').includes('HttpOnly'),
+  'cookie is not httpOnly',
+)
+
+const wrongPassword = await request(env, '/api/auth/login', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ username: 'alpha', password: 'wrong-password' }),
+})
+const wrongPasswordJson = await readJson(wrongPassword)
+assertEqual('wrong password rejected', wrongPassword.status, 401)
+assertEqual('wrong password generic message', wrongPasswordJson.error, '账号或密码不正确')
+
+const unknownUser = await request(env, '/api/auth/login', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ username: 'missing', password: 'alpha-password' }),
+})
+const unknownUserJson = await readJson(unknownUser)
+assertEqual('unknown user rejected', unknownUser.status, 401)
+assertEqual('unknown user generic message', unknownUserJson.error, '账号或密码不正确')
 
 const meA = await request(env, '/api/auth/me', {
   headers: { cookie: cookieA },
@@ -387,80 +284,54 @@ const meA = await request(env, '/api/auth/me', {
 const meAJson = await readJson(meA)
 assertEqual('me status', meA.status, 200)
 assertEqual(
-  'me returns sanitized account',
-  (meAJson.user as Record<string, unknown>)?.email,
-  'Alice@Example.COM',
-)
-assert(
-  'me does not expose password hash',
-  !JSON.stringify(meAJson).includes('password_hash'),
-  'password hash leaked',
+  'me returns current fixed account',
+  (meAJson.user as Record<string, unknown>)?.id,
+  'user_a',
 )
 
-const wrongPassword = await request(env, '/api/auth/login', {
+const loginB = await request(env, '/api/auth/login', {
   method: 'POST',
   headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'alice@example.com', password: 'wrong-password' }),
+  body: JSON.stringify({ username: 'beta', password: 'beta-password' }),
 })
-const wrongPasswordJson = await readJson(wrongPassword)
-assertEqual('wrong password rejected', wrongPassword.status, 401)
-assertEqual('wrong password generic message', wrongPasswordJson.error, '邮箱或密码不正确')
-
-const loginA = await request(env, '/api/auth/login', {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'alice@example.com', password: 'password-123' }),
-})
-const cookieALogin = getSessionCookie(loginA)
-assertEqual('login status', loginA.status, 200)
-assert('login sets new cookie', cookieALogin.length > 0, 'missing login cookie')
-
-const registerB = await request(env, '/api/auth/register', {
-  method: 'POST',
-  headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({
-    email: 'bob@example.com',
-    displayName: 'Bob',
-    password: 'password-123',
-  }),
-})
-const cookieB = getSessionCookie(registerB)
-assertEqual('second register status', registerB.status, 200)
+const cookieB = getSessionCookie(loginB)
+assertEqual('second fixed account login status', loginB.status, 200)
 
 const pushA = await request(env, '/api/account/snapshot', {
   method: 'POST',
-  headers: { 'content-type': 'application/json', cookie: cookieALogin },
-  body: JSON.stringify({ payload: makeSnapshotPayload('alice') }),
+  headers: { 'content-type': 'application/json', cookie: cookieA },
+  body: JSON.stringify({ payload: makeSnapshotPayload('alpha') }),
 })
-assertEqual('account snapshot push status', pushA.status, 200)
+assertEqual('account A snapshot push status', pushA.status, 200)
 
 const pushB = await request(env, '/api/account/snapshot', {
   method: 'POST',
   headers: { 'content-type': 'application/json', cookie: cookieB },
-  body: JSON.stringify({ payload: makeSnapshotPayload('bob') }),
+  body: JSON.stringify({ payload: makeSnapshotPayload('beta') }),
 })
-assertEqual('second account snapshot push status', pushB.status, 200)
+assertEqual('account B snapshot push status', pushB.status, 200)
+assertEqual('server stores one snapshot per account', state.accountSnapshots.length, 2)
 
 const pullA = await request(env, '/api/account/snapshot', {
-  headers: { cookie: cookieALogin },
+  headers: { cookie: cookieA },
 })
 const pullAJson = await readJson(pullA)
-assertEqual('account snapshot pull status', pullA.status, 200)
+assertEqual('account A snapshot pull status', pullA.status, 200)
 assert(
   'account snapshots are isolated',
-  JSON.stringify(pullAJson).includes('alice-question') &&
-    !JSON.stringify(pullAJson).includes('bob-question'),
-  'snapshot leaked across users',
+  JSON.stringify(pullAJson).includes('alpha-question') &&
+    !JSON.stringify(pullAJson).includes('beta-question'),
+  'snapshot leaked across accounts',
 )
 
 const deleteA = await request(env, '/api/account/snapshot', {
   method: 'DELETE',
-  headers: { cookie: cookieALogin },
+  headers: { cookie: cookieA },
 })
-assertEqual('account snapshot delete status', deleteA.status, 200)
+assertEqual('account A snapshot delete status', deleteA.status, 200)
 
 const pullAfterDeleteA = await request(env, '/api/account/snapshot', {
-  headers: { cookie: cookieALogin },
+  headers: { cookie: cookieA },
 })
 const pullAfterDeleteAJson = await readJson(pullAfterDeleteA)
 assertEqual('deleted account snapshot pull status', pullAfterDeleteA.status, 200)
@@ -471,14 +342,14 @@ const pullBAfterDeleteA = await request(env, '/api/account/snapshot', {
 })
 const pullBAfterDeleteAJson = await readJson(pullBAfterDeleteA)
 assert(
-  'delete only removes current user snapshot',
-  JSON.stringify(pullBAfterDeleteAJson).includes('bob-question'),
-  'deleting user A removed user B snapshot',
+  'delete only removes current account snapshot',
+  JSON.stringify(pullBAfterDeleteAJson).includes('beta-question'),
+  'deleting account A removed account B snapshot',
 )
 
 const logoutA = await request(env, '/api/auth/logout', {
   method: 'POST',
-  headers: { cookie: cookieALogin },
+  headers: { cookie: cookieA },
 })
 assertEqual('logout status', logoutA.status, 200)
 assert(
@@ -487,9 +358,7 @@ assert(
   'cookie not cleared',
 )
 
-const meAfterLogout = await request(env, '/api/auth/me', {
-  headers: { cookie: cookieALogin },
-})
+const meAfterLogout = await request(env, '/api/auth/me')
 assertEqual('me after logout unauthorized', meAfterLogout.status, 401)
 
 const snapshotLoggedOut = await request(env, '/api/account/snapshot')
@@ -503,4 +372,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log('账号认证检查通过：注册、登录、会话、退出和账号快照隔离正常')
+console.log('账号认证检查通过：固定账密登录、会话、退出和账号快照隔离正常')

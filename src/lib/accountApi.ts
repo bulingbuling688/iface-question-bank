@@ -2,7 +2,7 @@ const API_BASE = '/api'
 
 export interface AccountUser {
   id: string
-  email: string
+  username: string
   displayName: string
 }
 
@@ -26,12 +26,8 @@ interface ApiError {
 }
 
 export interface AccountAuthInput {
-  email: string
+  username: string
   password: string
-}
-
-export interface AccountRegisterInput extends AccountAuthInput {
-  displayName: string
 }
 
 async function accountFetch<T>(path: string, options: RequestInit = {}): Promise<ApiOk<T>> {
@@ -55,14 +51,6 @@ async function accountFetch<T>(path: string, options: RequestInit = {}): Promise
 function requireUser(data: ApiOk<unknown>): AccountUser {
   if (!data.user) throw new Error('账号服务没有返回用户信息')
   return data.user
-}
-
-export async function registerAccount(input: AccountRegisterInput): Promise<AccountUser> {
-  const data = await accountFetch<never>('/auth/register', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
-  return requireUser(data)
 }
 
 export async function loginAccount(input: AccountAuthInput): Promise<AccountUser> {

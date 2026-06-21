@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { SettingsDrawer } from '@/components/layout/SettingsDrawer'
 import { pushToAccount } from '@/lib/accountSync'
 import { preloadPath } from '@/lib/routePreload'
@@ -18,6 +18,7 @@ const navItems = [
 
 export function Navbar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { theme, toggleTheme } = useStudyStore()
   const { sessions } = useAIStore()
   const { user, isLoggedIn, loading: accountLoading, logout } = useAccountStore()
@@ -88,7 +89,7 @@ export function Navbar() {
   }
 
   const loginState = { from: `${location.pathname}${location.search}` }
-  const accountLabel = user?.displayName || user?.email.split('@')[0] || '账号'
+  const accountLabel = user?.displayName || user?.username || '账号'
 
   const handleAccountSync = async () => {
     if (!isLoggedIn || accountBusy) return
@@ -112,6 +113,8 @@ export function Navbar() {
       await logout()
       setAccountOpen(false)
       setMobileOpen(false)
+      navigate('/login', { replace: true })
+      window.location.reload()
     } catch (err) {
       setAccountMessage(err instanceof Error ? err.message : String(err))
     } finally {
@@ -335,7 +338,7 @@ export function Navbar() {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {user?.email}
+                        {user?.username}
                       </p>
                     </div>
                     <button
@@ -700,7 +703,7 @@ export function Navbar() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {user?.email}
+                {user?.username}
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

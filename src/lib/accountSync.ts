@@ -51,18 +51,16 @@ export async function pushToAccount(aiSessions: AISession[] = []): Promise<Accou
 }
 
 export async function pullFromAccount(
-  localAISessions: AISession[] = [],
+  _localAISessions: AISession[] = [],
 ): Promise<AccountSyncResult | null> {
   try {
     const remote = await loadFromAccount()
     if (!remote.backup) return null
 
-    const localBackup = await collectLocalSyncData(localAISessions)
-    const merged = mergeGistBackupData(localBackup, remote.backup)
-    await applySyncData(merged.backup)
+    await applySyncData(remote.backup)
 
     return {
-      ...resultFromBackup(merged.backup, remote.backup.exportedAt, merged.stats),
+      ...resultFromBackup(remote.backup, remote.backup.exportedAt),
       remoteUpdatedAt: remote.updatedAt,
     }
   } catch (err) {

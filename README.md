@@ -76,7 +76,8 @@ The static VPS deployment does not require server-side secrets.
 | Name | Purpose | Required | Example |
 |---|---|---|---|
 | VITE_GITHUB_CLIENT_ID | Optional GitHub OAuth client ID exposed to the browser at build time | No | your_github_oauth_app_client_id |
-| AUTH_PEPPER | Cloudflare Worker secret used when hashing account passwords | Yes for account login | generated-long-random-secret |
+| IFACE_AUTH_USERS | Cloudflare Worker secret containing the fixed account list JSON | Yes for account login | `[{"id":"user_a","username":"alpha","password":"***","displayName":"账号 A"}]` |
+| IFACE_SESSION_SECRET | Cloudflare Worker secret used to sign login cookies | Yes for account login | generated-long-random-secret |
 | IFACE_AI_API_KEY | Optional local smoke-test API key for CLI checks only | No | sk-*** |
 | IFACE_AI_BASE_URL | Optional local smoke-test AI base URL for CLI checks only | No | https://api.example.com/v1 |
 | IFACE_AI_MODEL | Optional local smoke-test model name for CLI checks only | No | gpt-example |
@@ -86,10 +87,11 @@ Do not commit real keys. Runtime API keys entered in the app are stored in the u
 
 Cloudflare D1 legacy sync does not require committed secrets. The browser creates a per-user sync identity, stores the secret locally, and the Worker stores only a SHA-256 hash in D1.
 
-First-party account/password login requires `AUTH_PEPPER` as a Cloudflare Worker secret. Set it with:
+Fixed account/password login requires two Cloudflare Worker secrets:
 
 ```bash
-bunx wrangler secret put AUTH_PEPPER
+bunx wrangler secret put IFACE_AUTH_USERS
+bunx wrangler secret put IFACE_SESSION_SECRET
 ```
 
 ## Deployment
@@ -182,7 +184,7 @@ iface-question-bank.chatapi.fun/api/*
 Environment file:
 
 ```text
-Cloudflare Worker secret: `AUTH_PEPPER`
+Cloudflare Worker secrets: `IFACE_AUTH_USERS`, `IFACE_SESSION_SECRET`
 ```
 
 ## Directory Structure

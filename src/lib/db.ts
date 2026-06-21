@@ -10,6 +10,7 @@ import type {
   QuestionNoteImage,
   StudyRecord,
 } from '../types'
+import { getActiveAccountId, sanitizeAccountId } from './accountScope'
 
 const DB_NAME = 'iface_db'
 const DB_VERSION = 8
@@ -53,10 +54,16 @@ export interface MetaEntry {
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null
+let openedAccountId: string | null = null
+
+function getAccountDbName(): string {
+  return `${DB_NAME}_${sanitizeAccountId(getActiveAccountId())}`
+}
 
 function getDB(): Promise<IDBPDatabase> {
-  if (!dbPromise) {
-    dbPromise = openDB(DB_NAME, DB_VERSION, {
+  const accountId = sanitizeAccountId(getActiveAccountId())
+  if (!dbPromise || openedAccountId !== accountId) {
+    dbPromise = openDB(getAccountDbName(), DB_VERSION, {
       upgrade(db) {
         // Questions store
         if (!db.objectStoreNames.contains(STORES.QUESTIONS)) {
@@ -142,8 +149,14 @@ function getDB(): Promise<IDBPDatabase> {
         }
       },
     })
+    openedAccountId = accountId
   }
   return dbPromise
+}
+
+export function resetDbConnection(): void {
+  dbPromise = null
+  openedAccountId = null
 }
 
 // ─── Questions ────────────────────────────────────────────────────────────────

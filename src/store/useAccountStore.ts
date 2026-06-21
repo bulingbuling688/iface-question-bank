@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useReducer } from 'react'
+import { setActiveAccountId } from '@/lib/accountScope'
 import {
   type AccountAuthInput,
-  type AccountRegisterInput,
   type AccountUser,
   getCurrentAccount,
   loginAccount,
   logoutAccount,
-  registerAccount,
 } from '@/lib/accountApi'
 
 interface AccountState {
@@ -26,6 +25,7 @@ type AccountAction =
 const listeners = new Set<(action: AccountAction) => void>()
 let globalUser: AccountUser | null = null
 let initialized = false
+let initializing = false
 let initializingPromise: Promise<AccountUser | null> | null = null
 
 function broadcast(action: AccountAction) {
@@ -58,16 +58,22 @@ function reducer(state: AccountState, action: AccountAction): AccountState {
 async function initAccountOnce(): Promise<AccountUser | null> {
   if (initialized) return globalUser
   if (!initializingPromise) {
-    initialized = true
+    initializing = true
     broadcast({ type: 'INIT_START' })
     initializingPromise = getCurrentAccount()
       .then((user) => {
         globalUser = user
+        initialized = true
+        initializing = false
+        setActiveAccountId(user?.id ?? null)
         broadcast({ type: 'SET_USER', user })
         return user
       })
       .catch(() => {
         globalUser = null
+        initialized = true
+        initializing = false
+        setActiveAccountId(null)
         broadcast({ type: 'SET_USER', user: null })
         return null
       })
@@ -81,7 +87,7 @@ async function initAccountOnce(): Promise<AccountUser | null> {
 export function useAccountStore() {
   const [state, dispatch] = useReducer(reducer, {
     user: globalUser,
-    loading: !initialized,
+    loading: !initialized || initializing,
     initialized,
     error: null,
   })
@@ -102,6 +108,9 @@ export function useAccountStore() {
     broadcast({ type: 'INIT_START' })
     const user = await getCurrentAccount()
     globalUser = user
+    initialized = true
+    initializing = false
+    setActiveAccountId(user?.id ?? null)
     broadcast({ type: 'SET_USER', user })
     return user
   }, [])
@@ -112,21 +121,8 @@ export function useAccountStore() {
       const user = await loginAccount(input)
       globalUser = user
       initialized = true
-      broadcast({ type: 'SET_USER', user })
-      return user
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      broadcast({ type: 'SET_ERROR', error: message })
-      throw err
-    }
-  }, [])
-
-  const register = useCallback(async (input: AccountRegisterInput) => {
-    broadcast({ type: 'SET_LOADING', loading: true })
-    try {
-      const user = await registerAccount(input)
-      globalUser = user
-      initialized = true
+      initializing = false
+      setActiveAccountId(user.id)
       broadcast({ type: 'SET_USER', user })
       return user
     } catch (err) {
@@ -143,6 +139,8 @@ export function useAccountStore() {
     } finally {
       globalUser = null
       initialized = true
+      initializing = false
+      setActiveAccountId(null)
       broadcast({ type: 'LOGOUT' })
     }
   }, [])
@@ -154,7 +152,6 @@ export function useAccountStore() {
     error: state.error,
     isLoggedIn: Boolean(state.user),
     login,
-    register,
     logout,
     refreshUser,
   }

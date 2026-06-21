@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
+import { getAccountScopedStorageKey } from '@/lib/accountScope'
 import { buildChatCompletionsUrl, requestChatCompletionStream } from '../lib/aiClient'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -279,7 +280,7 @@ function normalizeSystemPrompt(systemPrompt: unknown): string {
 
 function loadConfig(): AIConfig {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(getAccountScopedStorageKey(STORAGE_KEY))
     if (!raw) return { ...DEFAULT_AI_CONFIG }
     const parsed = JSON.parse(raw)
     return normalizeConfig(parsed)
@@ -290,7 +291,7 @@ function loadConfig(): AIConfig {
 
 function saveConfig(config: AIConfig): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+    localStorage.setItem(getAccountScopedStorageKey(STORAGE_KEY), JSON.stringify(config))
   } catch {}
 }
 
@@ -305,7 +306,7 @@ function isSameConfig(a: AIConfig, b: AIConfig): boolean {
 
 function loadSessions(): Record<string, AISession> {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY)
+    const raw = localStorage.getItem(getAccountScopedStorageKey(SESSIONS_KEY))
     if (!raw) return {}
     return JSON.parse(raw)
   } catch {
@@ -318,7 +319,7 @@ function saveSessions(sessions: Record<string, AISession>): void {
     // Keep only the 50 most recent sessions to avoid storage bloat
     const entries = Object.entries(sessions).sort(([, a], [, b]) => b.updatedAt - a.updatedAt)
     const trimmed = Object.fromEntries(entries.slice(0, 50))
-    localStorage.setItem(SESSIONS_KEY, JSON.stringify(trimmed))
+    localStorage.setItem(getAccountScopedStorageKey(SESSIONS_KEY), JSON.stringify(trimmed))
   } catch {}
 }
 
@@ -605,7 +606,7 @@ export function useAIStore() {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== STORAGE_KEY) return
+      if (event.key !== getAccountScopedStorageKey(STORAGE_KEY)) return
       syncConfig(loadConfig())
     }
 

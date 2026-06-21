@@ -21,7 +21,7 @@ const DAILY_GOAL_KEY = 'iface_daily_goal'
 
 function loadDailyGoal(): number {
   try {
-    const v = localStorage.getItem(DAILY_GOAL_KEY)
+    const v = localStorage.getItem(getAccountScopedStorageKey(DAILY_GOAL_KEY))
     if (v) {
       const n = parseInt(v, 10)
       if (!Number.isNaN(n) && n >= DAILY_GOAL_MIN && n <= DAILY_GOAL_MAX) return n
@@ -32,7 +32,7 @@ function loadDailyGoal(): number {
 
 function saveDailyGoal(n: number): void {
   try {
-    localStorage.setItem(DAILY_GOAL_KEY, String(n))
+    localStorage.setItem(getAccountScopedStorageKey(DAILY_GOAL_KEY), String(n))
   } catch {}
 }
 
@@ -42,7 +42,7 @@ function todayStr(): string {
 
 function loadStreak(): StreakData {
   try {
-    const raw = localStorage.getItem(STREAK_KEY)
+    const raw = localStorage.getItem(getAccountScopedStorageKey(STREAK_KEY))
     if (raw) {
       const parsed: StreakData = JSON.parse(raw)
       // Reset today's count if it's a new day
@@ -57,7 +57,7 @@ function loadStreak(): StreakData {
 
 function saveStreak(data: StreakData): void {
   try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data))
+    localStorage.setItem(getAccountScopedStorageKey(STREAK_KEY), JSON.stringify(data))
   } catch {}
 }
 
@@ -72,7 +72,7 @@ const STUDY_MODE_KEY = 'iface_study_mode'
 
 function loadStudyMode(): StudyMode {
   try {
-    const v = localStorage.getItem(STUDY_MODE_KEY)
+    const v = localStorage.getItem(getAccountScopedStorageKey(STUDY_MODE_KEY))
     if (v === 'answer-first' || v === 'answer-alongside' || v === 'memory-only') return v
   } catch {}
   return 'answer-first'
@@ -80,7 +80,7 @@ function loadStudyMode(): StudyMode {
 
 function saveStudyMode(mode: StudyMode): void {
   try {
-    localStorage.setItem(STUDY_MODE_KEY, mode)
+    localStorage.setItem(getAccountScopedStorageKey(STUDY_MODE_KEY), mode)
   } catch {}
 }
 
@@ -90,7 +90,7 @@ const HIDDEN_CATEGORIES_KEY = 'iface_hidden_categories'
 
 function loadHiddenCategories(): Set<string> {
   try {
-    const raw = localStorage.getItem(HIDDEN_CATEGORIES_KEY)
+    const raw = localStorage.getItem(getAccountScopedStorageKey(HIDDEN_CATEGORIES_KEY))
     if (raw) {
       const arr = JSON.parse(raw)
       if (Array.isArray(arr)) return new Set<string>(arr)
@@ -101,7 +101,7 @@ function loadHiddenCategories(): Set<string> {
 
 function saveHiddenCategories(s: Set<string>): void {
   try {
-    localStorage.setItem(HIDDEN_CATEGORIES_KEY, JSON.stringify([...s]))
+    localStorage.setItem(getAccountScopedStorageKey(HIDDEN_CATEGORIES_KEY), JSON.stringify([...s]))
   } catch {}
 }
 
@@ -111,6 +111,7 @@ import {
   getAllStudyRecords,
   putStudyRecord,
 } from '@/lib/db'
+import { getAccountScopedStorageKey } from '@/lib/accountScope'
 import { invalidateDailyCache } from '@/lib/questionLoader'
 import type { StudyRecord, StudyRecordMap, StudyStatus } from '@/types'
 

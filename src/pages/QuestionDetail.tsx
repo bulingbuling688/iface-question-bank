@@ -8,6 +8,7 @@ import { MarkdownRenderer } from '@/components/ui/LazyMarkdownRenderer'
 import { SpeechInputButton } from '@/components/ui/SpeechInputButton'
 import { useQuestion, useQuestions } from '@/hooks/useQuestions'
 import { useSpeechRecognition } from '@/hooks/useSpeechRecognition'
+import { getAccountScopedStorageKey } from '@/lib/accountScope'
 import {
   appendQuestionNoteContent,
   deleteQuestionAnswerAnnotation,
@@ -680,7 +681,7 @@ function RelatedPracticeCard({ items, onStartPractice }: RelatedPracticeCardProp
 const MY_ANSWER_DRAFT_PREFIX = 'iface_my_answer_draft_'
 
 function getMyAnswerDraftKey(questionId: string): string {
-  return `${MY_ANSWER_DRAFT_PREFIX}${questionId}`
+  return getAccountScopedStorageKey(`${MY_ANSWER_DRAFT_PREFIX}${questionId}`)
 }
 
 function loadMyAnswerDraft(questionId: string): string {

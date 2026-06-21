@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useLayoutEffect } from 'react'
-import { BrowserRouter, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { Navbar } from '@/components/layout/Navbar'
 import { OnboardingGuide } from '@/components/layout/OnboardingGuide'
 import { Spinner } from '@/components/ui'
@@ -7,6 +7,7 @@ import { AppErrorBoundary } from '@/components/ui/AppErrorBoundary'
 import { PWAUpdatePrompt } from '@/components/ui/PWAUpdatePrompt'
 import { installAppRecoveryHandlers } from '@/lib/appRecovery'
 import { routeLoaders } from '@/lib/routePreload'
+import { useAccountStore } from '@/store/useAccountStore'
 
 const Dashboard = lazy(routeLoaders.dashboard)
 const QuestionList = lazy(routeLoaders.questionList)
@@ -88,6 +89,21 @@ function ScrollToTop() {
 function AppRoutes() {
   const location = useLocation()
   const resetKey = `${location.pathname}${location.search}`
+  const { initialized, loading, isLoggedIn } = useAccountStore()
+
+  if (location.pathname !== '/login' && (!initialized || loading)) {
+    return <PageLoader />
+  }
+
+  if (location.pathname !== '/login' && !isLoggedIn) {
+    return (
+      <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />
+    )
+  }
+
+  if (location.pathname === '/login' && isLoggedIn) {
+    return <Navigate to="/" replace />
+  }
 
   return (
     <AppErrorBoundary resetKey={resetKey}>
@@ -117,16 +133,25 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-dvh bg-[var(--surface)]">
-        <AppRecoveryHandlers />
-        <ScrollToTop />
-        <Navbar />
-        <main>
-          <AppRoutes />
-        </main>
-        <OnboardingGuide />
-        <PWAUpdatePrompt />
-      </div>
+      <AppShell />
     </BrowserRouter>
+  )
+}
+
+function AppShell() {
+  const location = useLocation()
+  const showShell = location.pathname !== '/login'
+
+  return (
+    <div className="min-h-dvh bg-[var(--surface)]">
+      <AppRecoveryHandlers />
+      <ScrollToTop />
+      {showShell && <Navbar />}
+      <main>
+        <AppRoutes />
+      </main>
+      {showShell && <OnboardingGuide />}
+      <PWAUpdatePrompt />
+    </div>
   )
 }

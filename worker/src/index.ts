@@ -1,6 +1,7 @@
 interface Env {
   DB: D1Database
-  AUTH_PEPPER?: string
+  IFACE_AUTH_USERS?: string
+  IFACE_SESSION_SECRET?: string
 }
 
 interface SyncProfileRow {
@@ -14,31 +15,22 @@ interface SyncSnapshotRow {
   updated_at: string
 }
 
-interface UserRow {
+interface FixedAccount {
   id: string
-  email: string
-  email_normalized: string
-  display_name: string
-  password_hash: string
-  password_salt: string
-  password_algo: string
-  password_iterations: number
+  username: string
+  password: string
+  displayName: string
 }
 
-interface SessionUserRow {
-  session_id: string
-  user_id: string
-  email: string
-  display_name: string
-  expires_at: string
+interface SessionPayload {
+  userId: string
+  expiresAt: number
 }
 
 const PROFILE_HEADER = 'x-iface-profile-id'
 const SECRET_HEADER = 'x-iface-sync-secret'
 const SESSION_COOKIE = 'iface_session'
 const MAX_PAYLOAD_BYTES = 950_000
-const PASSWORD_ALGO = 'pbkdf2-sha256'
-const PASSWORD_ITERATIONS = 210_000
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30
 
 function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
@@ -48,6 +40,7 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   headers.set('access-control-allow-origin', '*')
   headers.set('access-control-allow-methods', 'GET,POST,DELETE,OPTIONS')
   headers.set('access-control-allow-headers', `${PROFILE_HEADER}, ${SECRET_HEADER}, content-type`)
+  headers.set('access-control-allow-credentials', 'true')
   return new Response(JSON.stringify(body), { ...init, headers })
 }
 
@@ -63,14 +56,39 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
+function fromBase64Url(value: string): Uint8Array | null {
+  try {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=')
+    const binary = atob(padded)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes
+  } catch {
+    return null
+  }
+}
+
+function base64UrlEncodeText(value: string): string {
+  return toBase64Url(new TextEncoder().encode(value))
+}
+
+function base64UrlDecodeText(value: string): string | null {
+  const bytes = fromBase64Url(value)
+  if (!bytes) return null
+  try {
+    return new TextDecoder().decode(bytes)
+  } catch {
+    return null
+  }
+}
+
 function randomToken(byteLength: number): string {
   const bytes = new Uint8Array(byteLength)
   crypto.getRandomValues(bytes)
   return toBase64Url(bytes)
-}
-
-function randomId(prefix: string): string {
-  return `${prefix}_${randomToken(18)}`
 }
 
 function normalizeProfileId(value: string | null): string | null {
@@ -92,15 +110,6 @@ async function sha256Hex(value: string): Promise<string> {
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
 }
 
-function timingSafeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  let diff = 0
-  for (let i = 0; i < a.length; i++) {
-    diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return diff === 0
-}
-
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   let diff = 0
@@ -108,61 +117,6 @@ function timingSafeEqual(a: string, b: string): boolean {
     diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
   }
   return diff === 0
-}
-
-function normalizeEmail(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (trimmed.length > 254) return null
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return null
-  return trimmed.toLowerCase()
-}
-
-function normalizeDisplayName(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  if (trimmed.length < 1 || trimmed.length > 40) return null
-  return trimmed
-}
-
-function normalizePassword(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  if (value.length < 8 || value.length > 160) return null
-  return value
-}
-
-function getAuthPepper(env: Env): string {
-  const pepper = env.AUTH_PEPPER?.trim()
-  if (!pepper) {
-    throw new Error('AUTH_PEPPER is not configured')
-  }
-  return pepper
-}
-
-async function hashPassword(
-  password: string,
-  salt: string,
-  pepper: string,
-  iterations: number,
-): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(`${pepper}:${password}`),
-    'PBKDF2',
-    false,
-    ['deriveBits'],
-  )
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      hash: 'SHA-256',
-      salt: new TextEncoder().encode(salt),
-      iterations,
-    },
-    key,
-    256,
-  )
-  return toBase64Url(new Uint8Array(bits))
 }
 
 function parseCookie(request: Request, name: string): string | null {
@@ -198,12 +152,8 @@ function authResponse(body: unknown, cookie?: string, init: ResponseInit = {}): 
   return jsonResponse(body, { ...init, headers })
 }
 
-function sanitizeUser(row: Pick<UserRow, 'id' | 'email' | 'display_name'>) {
-  return {
-    id: row.id,
-    email: row.email,
-    displayName: row.display_name,
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 async function readJsonBody(request: Request): Promise<unknown> {
@@ -225,28 +175,171 @@ async function readJsonBody(request: Request): Promise<unknown> {
   }
 }
 
-async function requireProfile(request: Request, env: Env): Promise<string | Response> {
-  const profileId = normalizeProfileId(request.headers.get(PROFILE_HEADER))
-  const secret = normalizeSecret(request.headers.get(SECRET_HEADER))
-  if (!profileId || !secret) return errorResponse(401, '缺少或无效的同步身份')
-
-  const row = await env.DB.prepare(
-    'SELECT profile_id, secret_hash FROM sync_profiles WHERE profile_id = ?',
-  )
-    .bind(profileId)
-    .first<SyncProfileRow>()
-  if (!row) return errorResponse(401, '同步身份不存在')
-
-  const providedHash = await sha256Hex(secret)
-  if (!timingSafeEqualHex(providedHash, row.secret_hash)) {
-    return errorResponse(401, '同步密钥不正确')
-  }
-
-  return profileId
+function normalizeUsername(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().toLowerCase()
+  if (!/^[a-z0-9._-]{2,64}$/.test(trimmed)) return null
+  return trimmed
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+function normalizePassword(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  if (value.length < 1 || value.length > 200) return null
+  return value
+}
+
+function normalizeAccount(value: unknown): FixedAccount | null {
+  if (!isRecord(value)) return null
+  const id = typeof value.id === 'string' ? value.id.trim() : ''
+  const username = normalizeUsername(value.username)
+  const password = normalizePassword(value.password)
+  const displayName = typeof value.displayName === 'string' ? value.displayName.trim() : ''
+
+  if (!/^[a-zA-Z0-9_-]{2,64}$/.test(id)) return null
+  if (!username || !password) return null
+  if (displayName.length < 1 || displayName.length > 40) return null
+
+  return { id, username, password, displayName }
+}
+
+function getConfiguredAccounts(env: Env): FixedAccount[] {
+  const raw = env.IFACE_AUTH_USERS?.trim()
+  if (!raw) throw new Error('IFACE_AUTH_USERS is not configured')
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('IFACE_AUTH_USERS must be valid JSON')
+  }
+
+  if (!Array.isArray(parsed)) throw new Error('IFACE_AUTH_USERS must be an array')
+
+  const accounts = parsed.map(normalizeAccount)
+  if (accounts.some((account) => account === null)) {
+    throw new Error('IFACE_AUTH_USERS contains an invalid account')
+  }
+
+  const validAccounts = accounts as FixedAccount[]
+  const ids = new Set(validAccounts.map((account) => account.id))
+  const usernames = new Set(validAccounts.map((account) => account.username))
+  if (ids.size !== validAccounts.length || usernames.size !== validAccounts.length) {
+    throw new Error('IFACE_AUTH_USERS contains duplicate accounts')
+  }
+
+  return validAccounts
+}
+
+function findAccountByUsername(env: Env, username: string): FixedAccount | null {
+  return getConfiguredAccounts(env).find((account) => account.username === username) ?? null
+}
+
+function findAccountById(env: Env, userId: string): FixedAccount | null {
+  return getConfiguredAccounts(env).find((account) => account.id === userId) ?? null
+}
+
+function publicAccount(account: FixedAccount) {
+  return {
+    id: account.id,
+    username: account.username,
+    displayName: account.displayName,
+  }
+}
+
+function getSessionSecret(env: Env): string {
+  const secret = env.IFACE_SESSION_SECRET?.trim()
+  if (!secret) throw new Error('IFACE_SESSION_SECRET is not configured')
+  return secret
+}
+
+async function hmacSha256Base64Url(secret: string, value: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value))
+  return toBase64Url(new Uint8Array(signature))
+}
+
+async function createSessionToken(env: Env, account: FixedAccount): Promise<string> {
+  const payload: SessionPayload = {
+    userId: account.id,
+    expiresAt: Date.now() + SESSION_MAX_AGE_SECONDS * 1000,
+  }
+  const payloadText = JSON.stringify(payload)
+  const encodedPayload = base64UrlEncodeText(payloadText)
+  const signature = await hmacSha256Base64Url(getSessionSecret(env), encodedPayload)
+  return `${encodedPayload}.${signature}`
+}
+
+async function readSessionAccount(request: Request, env: Env): Promise<FixedAccount | null> {
+  const token = parseCookie(request, SESSION_COOKIE)
+  if (!token) return null
+
+  const [encodedPayload, signature, ...extra] = token.split('.')
+  if (!encodedPayload || !signature || extra.length > 0) return null
+
+  const expectedSignature = await hmacSha256Base64Url(getSessionSecret(env), encodedPayload)
+  if (!timingSafeEqual(signature, expectedSignature)) return null
+
+  const payloadText = base64UrlDecodeText(encodedPayload)
+  if (!payloadText) return null
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(payloadText)
+  } catch {
+    return null
+  }
+
+  if (!isRecord(payload)) return null
+  const userId = typeof payload.userId === 'string' ? payload.userId : ''
+  const expiresAt = typeof payload.expiresAt === 'number' ? payload.expiresAt : 0
+  if (!userId || expiresAt <= Date.now()) return null
+
+  return findAccountById(env, userId)
+}
+
+async function requireUser(request: Request, env: Env): Promise<FixedAccount | Response> {
+  const account = await readSessionAccount(request, env)
+  if (!account) return errorResponse(401, '请先登录')
+  return account
+}
+
+async function handleAccountLogin(request: Request, env: Env): Promise<Response> {
+  let body: unknown
+  try {
+    body = await readJsonBody(request)
+  } catch (err) {
+    return errorResponse(400, err instanceof Error ? err.message : '请求体不正确')
+  }
+
+  if (!isRecord(body)) return errorResponse(400, '请求体不正确')
+
+  const username = normalizeUsername(body.username)
+  const password = normalizePassword(body.password)
+  if (!username || !password) return errorResponse(401, '账号或密码不正确')
+
+  const account = findAccountByUsername(env, username)
+  if (!account || !timingSafeEqual(password, account.password)) {
+    return errorResponse(401, '账号或密码不正确')
+  }
+
+  const token = await createSessionToken(env, account)
+  return authResponse({ ok: true, user: publicAccount(account) }, sessionCookie(token))
+}
+
+async function handleAccountLogout(): Promise<Response> {
+  return authResponse({ ok: true }, clearSessionCookie())
+}
+
+async function handleAccountMe(request: Request, env: Env): Promise<Response> {
+  const account = await requireUser(request, env)
+  if (account instanceof Response) return account
+  return jsonResponse({ ok: true, user: publicAccount(account) })
 }
 
 function validateSnapshotPayload(
@@ -287,214 +380,14 @@ function validateSnapshotPayload(
   return { ok: true, payload }
 }
 
-async function handleRegister(env: Env): Promise<Response> {
-  const profileId = randomToken(18)
-  const secret = randomToken(32)
-  const secretHash = await sha256Hex(secret)
-  const now = new Date().toISOString()
-
-  await env.DB.prepare(
-    'INSERT INTO sync_profiles (profile_id, secret_hash, created_at, updated_at) VALUES (?, ?, ?, ?)',
-  )
-    .bind(profileId, secretHash, now, now)
-    .run()
-
-  return jsonResponse({ ok: true, profileId, secret, createdAt: now })
-}
-
-async function createSession(request: Request, env: Env, userId: string): Promise<string> {
-  const token = randomToken(32)
-  const tokenHash = await sha256Hex(token)
-  const now = new Date()
-  const nowIso = now.toISOString()
-  const expiresAt = new Date(now.getTime() + SESSION_MAX_AGE_SECONDS * 1000).toISOString()
-  const userAgent = request.headers.get('user-agent')
-
-  await env.DB.prepare(
-    `INSERT INTO user_sessions
-       (id, user_id, token_hash, created_at, expires_at, last_seen_at, user_agent)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(randomId('ses'), userId, tokenHash, nowIso, expiresAt, nowIso, userAgent)
-    .run()
-
-  await env.DB.prepare('UPDATE users SET last_login_at = ?, updated_at = ? WHERE id = ?')
-    .bind(nowIso, nowIso, userId)
-    .run()
-
-  return token
-}
-
-async function requireUser(request: Request, env: Env): Promise<SessionUserRow | Response> {
-  const token = parseCookie(request, SESSION_COOKIE)
-  if (!token) return errorResponse(401, '请先登录')
-
-  const tokenHash = await sha256Hex(token)
-  const row = await env.DB.prepare(
-    `SELECT
-       user_sessions.id AS session_id,
-       users.id AS user_id,
-       users.email,
-       users.display_name,
-       user_sessions.expires_at
-     FROM user_sessions
-     JOIN users ON users.id = user_sessions.user_id
-     WHERE user_sessions.token_hash = ?`,
-  )
-    .bind(tokenHash)
-    .first<SessionUserRow>()
-
-  if (!row) return errorResponse(401, '请先登录')
-
-  const now = new Date()
-  if (new Date(row.expires_at).getTime() <= now.getTime()) {
-    await env.DB.prepare('DELETE FROM user_sessions WHERE token_hash = ?').bind(tokenHash).run()
-    return errorResponse(401, '登录已过期')
-  }
-
-  await env.DB.prepare('UPDATE user_sessions SET last_seen_at = ? WHERE id = ?')
-    .bind(now.toISOString(), row.session_id)
-    .run()
-
-  return row
-}
-
-async function handleAccountRegister(request: Request, env: Env): Promise<Response> {
-  let body: unknown
-  try {
-    body = await readJsonBody(request)
-  } catch (err) {
-    return errorResponse(400, err instanceof Error ? err.message : '请求体不正确')
-  }
-
-  if (!isRecord(body)) return errorResponse(400, '请求体不正确')
-
-  const emailRaw = typeof body.email === 'string' ? body.email.trim() : ''
-  const emailNormalized = normalizeEmail(body.email)
-  const displayName = normalizeDisplayName(body.displayName)
-  const password = normalizePassword(body.password)
-
-  if (!emailNormalized) return errorResponse(400, '邮箱格式不正确')
-  if (!displayName) return errorResponse(400, '昵称长度应为 1-40 个字符')
-  if (!password) return errorResponse(400, '密码长度至少 8 位')
-
-  const existing = await env.DB.prepare('SELECT id FROM users WHERE email_normalized = ?')
-    .bind(emailNormalized)
-    .first<{ id: string }>()
-  if (existing) return errorResponse(409, '该邮箱已注册')
-
-  const now = new Date().toISOString()
-  const userId = randomId('usr')
-  const salt = randomToken(18)
-  const passwordHash = await hashPassword(password, salt, getAuthPepper(env), PASSWORD_ITERATIONS)
-
-  await env.DB.prepare(
-    `INSERT INTO users
-       (id, email, email_normalized, display_name, password_hash, password_salt,
-        password_algo, password_iterations, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  )
-    .bind(
-      userId,
-      emailRaw,
-      emailNormalized,
-      displayName,
-      passwordHash,
-      salt,
-      PASSWORD_ALGO,
-      PASSWORD_ITERATIONS,
-      now,
-      now,
-    )
-    .run()
-
-  const token = await createSession(request, env, userId)
-
-  return authResponse(
-    {
-      ok: true,
-      user: {
-        id: userId,
-        email: emailRaw,
-        displayName,
-      },
-    },
-    sessionCookie(token),
-  )
-}
-
-async function handleAccountLogin(request: Request, env: Env): Promise<Response> {
-  let body: unknown
-  try {
-    body = await readJsonBody(request)
-  } catch (err) {
-    return errorResponse(400, err instanceof Error ? err.message : '请求体不正确')
-  }
-
-  if (!isRecord(body)) return errorResponse(400, '请求体不正确')
-
-  const emailNormalized = normalizeEmail(body.email)
-  const password = normalizePassword(body.password)
-  if (!emailNormalized || !password) return errorResponse(401, '邮箱或密码不正确')
-
-  const user = await env.DB.prepare(
-    `SELECT id, email, email_normalized, display_name, password_hash, password_salt,
-            password_algo, password_iterations
-     FROM users WHERE email_normalized = ?`,
-  )
-    .bind(emailNormalized)
-    .first<UserRow>()
-
-  if (!user || user.password_algo !== PASSWORD_ALGO) {
-    return errorResponse(401, '邮箱或密码不正确')
-  }
-
-  const providedHash = await hashPassword(
-    password,
-    user.password_salt,
-    getAuthPepper(env),
-    user.password_iterations,
-  )
-
-  if (!timingSafeEqual(providedHash, user.password_hash)) {
-    return errorResponse(401, '邮箱或密码不正确')
-  }
-
-  const token = await createSession(request, env, user.id)
-  return authResponse({ ok: true, user: sanitizeUser(user) }, sessionCookie(token))
-}
-
-async function handleAccountLogout(request: Request, env: Env): Promise<Response> {
-  const token = parseCookie(request, SESSION_COOKIE)
-  if (token) {
-    await env.DB.prepare('DELETE FROM user_sessions WHERE token_hash = ?')
-      .bind(await sha256Hex(token))
-      .run()
-  }
-  return authResponse({ ok: true }, clearSessionCookie())
-}
-
-async function handleAccountMe(request: Request, env: Env): Promise<Response> {
-  const user = await requireUser(request, env)
-  if (user instanceof Response) return user
-  return jsonResponse({
-    ok: true,
-    user: {
-      id: user.user_id,
-      email: user.email,
-      displayName: user.display_name,
-    },
-  })
-}
-
 async function handleAccountSnapshotPull(request: Request, env: Env): Promise<Response> {
-  const user = await requireUser(request, env)
-  if (user instanceof Response) return user
+  const account = await requireUser(request, env)
+  if (account instanceof Response) return account
 
   const snapshot = await env.DB.prepare(
     'SELECT payload, payload_hash, updated_at FROM user_snapshots WHERE user_id = ?',
   )
-    .bind(user.user_id)
+    .bind(account.id)
     .first<SyncSnapshotRow>()
 
   if (!snapshot) return jsonResponse({ ok: true, snapshot: null })
@@ -510,8 +403,8 @@ async function handleAccountSnapshotPull(request: Request, env: Env): Promise<Re
 }
 
 async function handleAccountSnapshotPush(request: Request, env: Env): Promise<Response> {
-  const user = await requireUser(request, env)
-  if (user instanceof Response) return user
+  const account = await requireUser(request, env)
+  if (account instanceof Response) return account
 
   let body: unknown
   try {
@@ -538,18 +431,53 @@ async function handleAccountSnapshotPush(request: Request, env: Env): Promise<Re
        payload_hash = excluded.payload_hash,
        updated_at = excluded.updated_at`,
   )
-    .bind(user.user_id, validated.payload, payloadHash, now)
+    .bind(account.id, validated.payload, payloadHash, now)
     .run()
 
   return jsonResponse({ ok: true, payloadHash, updatedAt: now })
 }
 
 async function handleAccountSnapshotDelete(request: Request, env: Env): Promise<Response> {
-  const user = await requireUser(request, env)
-  if (user instanceof Response) return user
+  const account = await requireUser(request, env)
+  if (account instanceof Response) return account
 
-  await env.DB.prepare('DELETE FROM user_snapshots WHERE user_id = ?').bind(user.user_id).run()
+  await env.DB.prepare('DELETE FROM user_snapshots WHERE user_id = ?').bind(account.id).run()
   return jsonResponse({ ok: true })
+}
+
+async function requireProfile(request: Request, env: Env): Promise<string | Response> {
+  const profileId = normalizeProfileId(request.headers.get(PROFILE_HEADER))
+  const secret = normalizeSecret(request.headers.get(SECRET_HEADER))
+  if (!profileId || !secret) return errorResponse(401, '缺少或无效的同步身份')
+
+  const row = await env.DB.prepare(
+    'SELECT profile_id, secret_hash FROM sync_profiles WHERE profile_id = ?',
+  )
+    .bind(profileId)
+    .first<SyncProfileRow>()
+  if (!row) return errorResponse(401, '同步身份不存在')
+
+  const providedHash = await sha256Hex(secret)
+  if (!timingSafeEqual(providedHash, row.secret_hash)) {
+    return errorResponse(401, '同步密钥不正确')
+  }
+
+  return profileId
+}
+
+async function handleRegister(env: Env): Promise<Response> {
+  const profileId = randomToken(18)
+  const secret = randomToken(32)
+  const secretHash = await sha256Hex(secret)
+  const now = new Date().toISOString()
+
+  await env.DB.prepare(
+    'INSERT INTO sync_profiles (profile_id, secret_hash, created_at, updated_at) VALUES (?, ?, ?, ?)',
+  )
+    .bind(profileId, secretHash, now, now)
+    .run()
+
+  return jsonResponse({ ok: true, profileId, secret, createdAt: now })
 }
 
 async function handlePull(request: Request, env: Env): Promise<Response> {
@@ -638,14 +566,11 @@ export default {
       if (pathname === '/api/sync/health' && request.method === 'GET') {
         return jsonResponse({ ok: true, service: 'iface-question-bank-sync' })
       }
-      if (pathname === '/api/auth/register' && request.method === 'POST') {
-        return await handleAccountRegister(request, env)
-      }
       if (pathname === '/api/auth/login' && request.method === 'POST') {
         return await handleAccountLogin(request, env)
       }
       if (pathname === '/api/auth/logout' && request.method === 'POST') {
-        return await handleAccountLogout(request, env)
+        return await handleAccountLogout()
       }
       if (pathname === '/api/auth/me' && request.method === 'GET') {
         return await handleAccountMe(request, env)

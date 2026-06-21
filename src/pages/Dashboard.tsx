@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, EmptyState, SegmentedRing, Skeleton } from '@/components/ui'
 import { useQuestions } from '@/hooks/useQuestions'
+import { getAccountScopedStorageKey } from '@/lib/accountScope'
 import {
   type CategoryMap,
   DEFAULT_CATEGORY_MAP,
@@ -27,7 +28,7 @@ const MODULE_PROGRESS_LIST_MAX_HEIGHT = 205
 function StreakBanner({ streak, dailyGoal }: { streak: StreakData; dailyGoal: number }) {
   const [dismissed, setDismissed] = useState(() => {
     try {
-      const stored = localStorage.getItem(STREAK_DISMISS_KEY)
+      const stored = localStorage.getItem(getAccountScopedStorageKey(STREAK_DISMISS_KEY))
       if (!stored) return false
       const today = new Date().toISOString().slice(0, 10)
       return stored === today
@@ -46,7 +47,7 @@ function StreakBanner({ streak, dailyGoal }: { streak: StreakData; dailyGoal: nu
   const handleDismiss = useCallback(() => {
     try {
       const today = new Date().toISOString().slice(0, 10)
-      localStorage.setItem(STREAK_DISMISS_KEY, today)
+      localStorage.setItem(getAccountScopedStorageKey(STREAK_DISMISS_KEY), today)
     } catch {
       // ignore
     }

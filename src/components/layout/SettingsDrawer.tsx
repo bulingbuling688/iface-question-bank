@@ -1204,7 +1204,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
   }, [sessions, upsertSessions])
 
   const handleAccountPull = useCallback(async () => {
-    if (!confirm('确定要从账号云端恢复数据吗？会和本地较新的数据合并。')) return
+    if (!confirm('确定要从当前账号云端恢复数据吗？会写入当前账号的本机数据空间。')) return
     setAccountSyncPulling(true)
     setLastSyncResult(null)
     try {
@@ -1221,7 +1221,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
         }
         setLastSyncResult({
           ok: true,
-          message: `已从账号云端同步：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话${formatRemoteMergeSummary(result)}`,
+          message: `已从账号云端同步：${result.recordCount ?? 0} 条学习记录、${result.questionCount ?? 0} 道自定义题目、${result.noteCount ?? 0} 条笔记、${result.answerAnnotationCount ?? 0} 个答案标注、${result.questionFlagCount ?? 0} 个重点题、${result.aiSessionCount ?? 0} 个 AI 会话`,
           at: result.exportedAt,
         })
       } else {
@@ -2534,7 +2534,7 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          {accountUser.email}
+                          {accountUser.username}
                         </p>
                       </div>
 
@@ -2646,6 +2646,8 @@ export function SettingsDrawer({ open, onClose }: SettingsDrawerProps) {
                           onClick={async () => {
                             await accountLogout()
                             setLastSyncResult({ ok: true, message: '已退出 iFace 账号' })
+                            navigate('/login', { replace: true })
+                            window.location.reload()
                           }}
                           style={{
                             padding: '6px 10px',
